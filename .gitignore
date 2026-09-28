@@ -1,0 +1,30 @@
+# Python y entornos virtuales
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Secretos y configuracion local
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Datos locales y archivos generados
+*.sqlite3
+*.sqlite3-journal
+*.log
+media/
+staticfiles/
+backups/
+*.dump
+
+# Editor y sistema operativo
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
