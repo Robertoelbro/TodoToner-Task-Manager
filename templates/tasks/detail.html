@@ -1,0 +1,14 @@
+{% extends 'base.html' %}{% block content %}
+<a class="back" href="{% url 'task-list' %}">← Volver a tareas</a>
+<div class="page-heading"><div><p class="eyebrow">TAREA #{{ task.pk }}</p><h1>{{ task.title }}</h1><span class="badge {% if task.is_overdue %}late{% endif %}">{% if task.is_overdue %}Fuera de plazo{% else %}Dentro de plazo{% endif %}</span></div>
+{% if user.is_supervisor %}<a class="button" href="{% url 'task-reassign' task.pk %}">Cambiar responsables</a>{% endif %}</div>
+<div class="detail-grid"><section class="panel"><h2>Detalles</h2><div class="description">{{ task.description|linebreaks|default:"Sin descripción adicional." }}</div>
+<dl><dt>Fecha límite</dt><dd>{{ task.deadline|date:"d/m/Y" }} · hasta el final del día</dd><dt>Creada por</dt><dd>{{ task.created_by.display_name }}</dd></dl>
+<h3>Responsables</h3><div class="people">{% for person in task.assignees.all %}<span>{{ person.display_name }}{% if not person.is_active %} · Inactivo{% endif %}</span>{% endfor %}</div>
+{% if not user.is_supervisor %}<p class="help">Para cambiar los responsables, contacta a un supervisor.</p>{% endif %}</section>
+<section class="panel"><p class="eyebrow">TRAZABILIDAD</p><h2>Historial de asignaciones</h2>
+{% for change in changes %}<div class="history"><strong>{{ change.actor.display_name }}</strong><small>{{ change.created_at|date:"d/m/Y H:i" }}</small>
+{% if change.previous_assignees %}<p>Antes: {% for person in change.previous_assignees %}{{ person.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% else %}<p>Asignación inicial</p>{% endif %}
+<p>Responsables: {% for person in change.new_assignees %}{{ person.name }}{% if not forloop.last %}, {% endif %}{% endfor %}</p></div>{% endfor %}</section></div>
+{% endblock %}
+

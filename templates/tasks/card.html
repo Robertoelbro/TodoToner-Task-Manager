@@ -1,0 +1,8 @@
+<article class="panel task-card">
+<div class="card-top"><span class="badge {% if task.is_overdue %}late{% endif %}">{% if task.is_overdue %}Fuera de plazo{% else %}Dentro de plazo{% endif %}</span><span class="muted">#{{ task.pk }}</span></div>
+<h2><a href="{% url 'task-detail' task.pk %}">{{ task.title }}</a></h2>
+<p class="muted">{{ task.description|truncatechars:120|default:"Sin descripción adicional." }}</p>
+<p class="deadline">Fecha límite <strong>{{ task.deadline|date:"d M Y" }}</strong></p>
+<div class="people">{% for person in task.assignees.all %}<span>{{ person.display_name }}</span>{% endfor %}</div>
+</article>
+

@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}
+<div class="page-heading"><div><p class="eyebrow">CONTROL DE ACTIVIDADES</p><h1>{% if user.is_supervisor %}Todas las tareas{% else %}Mis tareas{% endif %}</h1><p class="muted">{% if user.is_supervisor %}Consulta las tareas de todo el equipo.{% else %}Tareas que creaste o en las que eres responsable.{% endif %}</p></div><a class="button" href="{% url 'task-create' %}">+ Nueva tarea</a></div>
+<div class="task-grid">{% for task in tasks %}{% include 'tasks/card.html' %}{% empty %}<section class="panel empty"><h2>Todo listo para comenzar</h2><p>Aún no hay tareas para mostrar.</p><a href="{% url 'task-create' %}">Crear la primera tarea →</a></section>{% endfor %}</div>
+{% endblock %}
+

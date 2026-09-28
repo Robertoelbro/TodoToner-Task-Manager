@@ -1,0 +1,23 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Turno · Actividades{% endblock %}</title>
+<link rel="stylesheet" href="{% static 'app.css' %}"></head>
+<body>
+<header class="topbar"><a class="brand" href="{% url 'task-list' %}"><span class="brand-icon">T</span> Turno</a>
+<nav aria-label="Navegación principal">
+{% if user.is_authenticated %}
+<a href="{% url 'task-list' %}">Tareas</a>
+{% if user.is_supervisor %}<a href="{% url 'dashboard' %}">Dashboard</a>{% endif %}
+<span class="identity">{{ user.display_name }} · {% if user.is_supervisor %}Supervisor{% else %}Usuario base{% endif %}</span>
+<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="secondary small">Salir</button></form>
+{% else %}<a href="{% url 'login' %}">Iniciar sesión</a><a href="{% url 'register' %}">Crear cuenta</a>{% endif %}
+</nav></header>
+<main class="container">
+{% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}
+{% block content %}{% endblock %}
+</main>
+<footer>Turno · Gestión de actividades</footer>
+</body></html>
+

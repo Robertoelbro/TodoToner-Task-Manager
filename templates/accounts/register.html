@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}Crear cuenta · Turno{% endblock %}
+{% block content %}<section class="panel form-panel"><p class="eyebrow">COMIENZA TU JORNADA</p><h1>Crear cuenta</h1>
+<p class="muted">Tu cuenta tendrá acceso de usuario base. Los permisos de supervisor los gestiona la administración.</p>
+<form method="post">{% csrf_token %}{% include 'fields.html' %}<button>Crear cuenta</button></form>
+<p>¿Ya tienes una cuenta? <a href="{% url 'login' %}">Iniciar sesión</a></p></section>{% endblock %}
+
