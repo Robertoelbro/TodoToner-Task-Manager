@@ -28,3 +28,7 @@ backups/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local deployment bundles and Vercel metadata
+*.zip
+.vercel/

@@ -484,36 +484,32 @@ class TaskHistoryTests(TestCase):
         self.assertEqual(self.client.get(reverse('task-detail', args=[self.task.pk])).status_code,404)
         self.assertNotIn(self.task,self.client.get(reverse('task-history')).context['page'])
 
-    def test_supervisor_delete_requires_confirmation_and_preserves_relations(self):
+    def test_supervisor_delete_is_permanent_and_requires_confirmation(self):
         self.client.force_login(self.supervisor)
+        pk = self.task.pk
         AssignmentChange.objects.create(task=self.task, actor=self.owner, new_assignees=[])
-        url = reverse('task-delete', args=[self.task.pk])
-        self.assertEqual(self.client.get(url).status_code,200)
-        self.task.refresh_from_db()
-        self.assertIsNone(self.task.deleted_at)
+        TaskChange.objects.create(task=self.task, actor=self.owner, summary='Created')
+        zone = Zone.objects.get(code='bodega')
+        self.task.zones.add(zone)
+        self.task.hidden_by.add(self.owner)
+        url = reverse('task-delete', args=[pk])
+        self.assertContains(self.client.get(url), 'disabled data-delete-button')
+        self.assertTrue(Task.objects.filter(pk=pk).exists())
         self.assertEqual(self.client.post(url).status_code,400)
+        self.assertTrue(Task.objects.filter(pk=pk).exists())
+        csrf_client = Client(enforce_csrf_checks=True)
+        csrf_client.force_login(self.supervisor)
+        self.assertEqual(csrf_client.post(url, {'confirm':'yes'}).status_code,403)
         self.assertEqual(self.client.post(url,{'confirm':'yes'}).status_code,302)
-        self.task.refresh_from_db()
-        self.assertIsNotNone(self.task.deleted_at)
-        self.assertEqual(self.task.deleted_by,self.supervisor)
-        self.assertEqual(self.task.assignees.count(),1)
-        self.assertEqual(self.task.assignment_changes.count(),1)
-        self.assertTrue(TaskChange.objects.filter(task=self.task,actor=self.supervisor).exists())
-        self.assertIn(self.task,self.client.get(reverse('task-history')).context['page'])
-        self.assertEqual(self.client.get(reverse('task-detail',args=[self.task.pk])).status_code,200)
-        for name in ['task-tracking','task-reassign']:
-            for method in ['get','post']:
-                self.assertEqual(getattr(self.client,method)(reverse(name,args=[self.task.pk])).status_code,404)
-        from .views import visible_tasks, deadline_alerts
-        self.assertNotIn(self.task,visible_tasks(self.supervisor))
-        self.assertNotIn(self.task,deadline_alerts(self.supervisor))
-        self.assertEqual(self.client.get(reverse('gantt')).context['task_count'],0)
-        self.assertEqual(self.client.get(reverse('tv-dashboard')).context['active_count'],0)
-        self.client.force_login(self.owner)
-        self.assertIn(self.task,self.client.get(reverse('task-history')).context['page'])
-        self.assertNotIn(self.task,self.client.get(reverse('task-list')).context['tasks'])
-        self.client.force_login(self.other)
-        self.assertNotIn(self.task,self.client.get(reverse('task-history')).context['page'])
+        self.assertFalse(Task.objects.filter(pk=pk).exists())
+        self.assertFalse(AssignmentChange.objects.filter(task_id=pk).exists())
+        self.assertFalse(TaskChange.objects.filter(task_id=pk).exists())
+        for field in ('assignees', 'zones', 'hidden_by'):
+            self.assertFalse(getattr(Task, field).through.objects.filter(task_id=pk).exists())
+        self.assertTrue(User.objects.filter(pk=self.worker.pk).exists())
+        self.assertTrue(Zone.objects.filter(pk=zone.pk).exists())
+        self.assertEqual(self.client.get(reverse('task-detail',args=[pk])).status_code,404)
+        self.assertEqual(self.client.get(reverse('task-history')).context['page'].paginator.count,0)
 
     def test_management_can_delete(self):
         self.client.force_login(self.manager)

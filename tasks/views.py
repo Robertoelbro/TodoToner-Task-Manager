@@ -231,15 +231,38 @@ def task_history(request):
     tasks = visible_tasks(request.user, include_deleted=True).filter(
         Q(status=Task.Status.COMPLETED) | Q(hidden_by=request.user) | Q(deleted_at__isnull=False)
     ).distinct().order_by('-created_at', '-pk')
-    page = Paginator(tasks, 24).get_page(request.GET.get('page'))
-    return render(request, 'tasks/history.html', {'page': page})
+    from .forms import HistoryFilterForm
+    form = HistoryFilterForm(request.GET)
+    if form.is_valid():
+        filters = form.cleaned_data
+        if filters.get('worker'):
+            tasks = tasks.filter(assignees=filters['worker'])
+        if filters.get('zone'):
+            tasks = tasks.filter(zones=filters['zone'])
+        if filters.get('status'):
+            tasks = tasks.filter(status=filters['status'])
+        if filters.get('date_from'):
+            tasks = tasks.filter(deadline__gte=filters['date_from'])
+        if filters.get('date_to'):
+            tasks = tasks.filter(start_date__lte=filters['date_to'])
+    else:
+        tasks = tasks.none()
+    page = Paginator(tasks.distinct(), 50).get_page(request.GET.get('page'))
+    params = request.GET.copy()
+    params.pop('page', None)
+    return render(request, 'tasks/history.html', {'page': page, 'filter_form': form,
+        'filter_query': params.urlencode()})
 
 
 @login_required
 @require_http_methods(['POST'])
 @transaction.atomic
 def task_hide(request, pk):
-    task = get_object_or_404(visible_tasks(request.user).select_for_update(), pk=pk)
+    # Lock only the task row: PostgreSQL cannot lock a DISTINCT joined query.
+    task = get_object_or_404(Task.objects.select_for_update(), pk=pk, deleted_at__isnull=True)
+    if not visible_tasks(request.user).filter(pk=pk).exists():
+        from django.http import Http404
+        raise Http404
     if not task.can_hide:
         raise PermissionDenied('Solo puedes ocultar tareas vencidas o finalizadas que no estén en proceso.')
     task.hidden_by.add(request.user)
@@ -253,15 +276,12 @@ def task_hide(request, pk):
 def task_delete(request, pk):
     if not request.user.can_supervise:
         raise PermissionDenied
-    task = get_object_or_404(Task.objects.select_for_update(), pk=pk, deleted_at__isnull=True)
+    task = get_object_or_404(Task.objects.select_for_update(), pk=pk)
     if request.method == 'POST':
         if request.POST.get('confirm') != 'yes':
             return render(request, 'tasks/delete.html', {'task': task, 'error': 'Confirma la eliminación.'}, status=400)
-        task.deleted_at = timezone.now()
-        task.deleted_by = request.user
-        task.save(update_fields=['deleted_at', 'deleted_by'])
-        TaskChange.objects.create(task=task, actor=request.user, summary='Tarea eliminada (conservada en historial)')
-        messages.success(request, 'Tarea eliminada de las vistas activas y conservada en Historial.')
+        task.delete()
+        messages.success(request, 'Tarea eliminada definitivamente de la base de datos.')
         return redirect('task-history')
     return render(request, 'tasks/delete.html', {'task': task})
 

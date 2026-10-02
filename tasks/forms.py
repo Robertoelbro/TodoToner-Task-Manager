@@ -85,3 +85,11 @@ class DashboardFilterForm(forms.Form):
         if data.get('date_from') and data.get('date_to') and data['date_from'] > data['date_to']:
             raise forms.ValidationError('La fecha Desde no puede ser posterior a Hasta.')
         return data
+
+
+class HistoryFilterForm(DashboardFilterForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ('priority', 'supervisor', 'multiple'):
+            self.fields.pop(name)
+        self.fields['worker'].queryset = User.objects.all().order_by('first_name', 'username')
