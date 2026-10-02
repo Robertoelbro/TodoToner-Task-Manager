@@ -3,14 +3,17 @@
 <html lang="es">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Turno · Actividades{% endblock %}</title>
-<link rel="stylesheet" href="{% static 'app.css' %}"></head>
+<link rel="icon" type="image/png" href="{% static 'brand/logo.png' %}">
+<link rel="stylesheet" href="{% static 'app.css' %}"><link rel="stylesheet" href="{% static 'server-clock.css' %}"></head>
 <body>
-<header class="topbar"><a class="brand" href="{% url 'task-list' %}"><span class="brand-icon">T</span> Turno</a>
+{% include 'server_clock.html' %}
+<header class="topbar"><a class="brand" href="{% url 'task-list' %}"><img class="brand-logo" src="{% static 'brand/logo.png' %}" alt="Todotoner"> <span>Todotoner</span></a>
 <nav aria-label="Navegación principal">
 {% if user.is_authenticated %}
-<a href="{% url 'task-list' %}">Tareas</a>
-{% if user.is_supervisor %}<a href="{% url 'dashboard' %}">Dashboard</a>{% endif %}
-<span class="identity">{{ user.display_name }} · {% if user.is_supervisor %}Supervisor{% else %}Usuario base{% endif %}</span>
+<a href="{% url 'task-list' %}">Hub principal</a><a href="{% url 'task-history' %}">Historial</a>
+{% if user.can_supervise %}<a href="{% url 'gantt' %}">Gantt</a><a href="{% url 'tv-dashboard' %}">Dashboard TV</a>{% endif %}
+{% if user.is_superuser %}<a href="{% url 'users-manage' %}">Usuarios</a>{% endif %}
+<span class="identity">{{ user.display_name }} · {{ user.role_label }}</span>
 <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="secondary small">Salir</button></form>
 {% else %}<a href="{% url 'login' %}">Iniciar sesión</a><a href="{% url 'register' %}">Crear cuenta</a>{% endif %}
 </nav></header>
@@ -19,5 +22,7 @@
 {% block content %}{% endblock %}
 </main>
 <footer>Turno · Gestión de actividades</footer>
+<script src="{% static 'urgency.js' %}" defer></script>
+<script src="{% static 'server-clock.js' %}" defer></script>
 </body></html>
 

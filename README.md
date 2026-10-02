@@ -11,11 +11,13 @@ Aplicación web responsive para asignar tareas a trabajadores y consultar sus fe
 - Solo el supervisor puede reasignar, incluso si el creador de la tarea es un usuario base.
 - Historial de asignaciones con actor, fecha, responsables anteriores y nuevos.
 - Dashboard por trabajador, incluidos usuarios sin tareas e inactivos identificados.
+- Prioridad, estado y supervisor visibles en tarjetas y detalle.
+- Tareas anteriores migradas con prioridad media, estado pendiente y supervisor sin asignar.
 - Fecha límite inclusiva: vence al terminar el día indicado, en America/Santiago.
 - Registro público siempre crea usuarios base. No permite otorgarse privilegios.
-- El tercer perfil y GeoVictoria quedan pendientes.
+- Gerencia utiliza el superusuario de Django y gestiona usuarios desde una vista propia. GeoVictoria queda pendiente.
 
-El usuario supervisor no equivale al superusuario técnico de Django. No requiere acceso al panel administrativo. El superusuario gestiona las cuentas; para usar las funciones de supervisor en la aplicación también debe tener marcada esa casilla.
+Supervisor y gerencia son roles distintos. Gerencia gestiona cuentas y puede supervisar tareas.
 
 ## Tecnologías y alcance
 
@@ -23,7 +25,7 @@ Python 3.12, Django 5.2 LTS, django-environ y psycopg 3.
 Se usa SQLite para desarrollo local; PostgreSQL queda preparado mediante DATABASE_URL.
 La interfaz utiliza templates y CSS responsive local, sin dependencias CDN.
 Bootstrap y HTMX quedan pendientes; el dashboard actual se actualiza al recargar la página.
-No se han implementado todavía estados de avance/finalización, edición de contenido o eliminación de tareas, recuperación de contraseña, verificación de correo ni GeoVictoria. Las etiquetas Dentro/Fuera de plazo comparan fechas, no progreso.
+Estados disponibles: pendiente, en proceso, en revisión y finalizada. Solo supervisores pueden cambiar estado, prioridad (baja/media/alta) y supervisor a cargo, mediante Actualizar seguimiento en el detalle. Las tareas nuevas comienzan pendientes. El supervisor a cargo es opcional y debe ser un supervisor activo. Las tareas finalizadas no cuentan como fuera de plazo. No se han implementado edición de contenido, eliminación, recuperación de contraseña, verificación de correo ni GeoVictoria.
 
 ## Instalación en Windows
 
@@ -56,16 +58,19 @@ Activar el entorno es opcional:
 
 El .venv original usa Python 3.12 incluido con las herramientas locales. Si cambia esa instalación o se mueve el proyecto, recrear .venv con una instalación propia de Python 3.12.
 
-## Habilitar supervisores
+## Gerencia y gestión de usuarios
 
-Crear un administrador técnico con contraseña elegida por quien ejecute el comando:
+Gerencia corresponde a is_superuser de Django y también puede supervisar tareas. Crear la primera cuenta gerencial desde terminal:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py createsuperuser
 ```
 
-Entrar a http://127.0.0.1:8000/admin/, abrir Usuarios, seleccionar la cuenta y marcar **Es supervisor** en la sección Turno.
-No hay cuentas ni contraseñas predeterminadas. Los permisos de administración de usuarios están restringidos al superusuario técnico.
+Iniciar sesión en /login/ y abrir el menú Usuarios (/usuarios/). Gerencia puede editar nombre, apellido, correo y activar/desactivar el permiso de supervisor de las demás cuentas no gerenciales. Esta vista no cambia contraseñas, superusuarios ni permisos técnicos; ningún usuario puede ascenderse desde el registro.
+
+Django Admin está deshabilitado: no existe la ruta /admin/. Las rutas inexistentes y los intentos sin permiso de acceder a gestión muestran un 404 personalizado sin listar rutas, incluso con DEBUG=True. DEBUG=False sigue siendo necesario en producción para evitar otras páginas técnicas de error.
+
+Las cuentas anteriormente marcadas is_management se convierten a superusuarios mediante migración; ese campo se elimina. Los superusuarios existentes pasan a mostrarse como Gerencia sin cambiar su contraseña. No hay cuentas ni contraseñas predeterminadas.
 
 ## Configuración
 
@@ -116,3 +121,61 @@ git commit -m "Agregar autenticacion y tareas con permisos de supervisor"
 ```
 
 No se realizan commits ni publicaciones automáticamente. Mantener el repositorio privado no sustituye los permisos de acceso a la aplicación.
+
+## Hub de supervisión y zonas
+
+La portada del supervisor abre /dashboard/ con tareas personales y últimos cambios. El menú /gantt/ contiene el Gantt general y el desglose por Ventas, Postventas y Bodega. Paleta blanca, negra y verde.
+
+Las tareas nuevas requieren fecha de inicio, fecha límite y una o más zonas. Solo supervisores pueden modificar fechas y zonas posteriormente en Actualizar seguimiento. Las tareas compartidas aparecen en cada zona pero se cuentan una vez en el total.
+
+Filtros combinables: zona, trabajador responsable, fechas, prioridad y más de un responsable. Las fechas seleccionan tareas que coincidan total o parcialmente con el intervalo. Los filtros afectan al equipo, no a las tareas personales. Limpiar filtros restaura todas las tareas. El Gantt se desplaza horizontalmente en móvil, admite períodos largos con hasta 90 columnas y sus barras abren el detalle; no se arrastran para editar.
+
+La migración conserva las tareas antiguas: inicio provisional según su creación en Chile, sin superar la fecha límite, y sin zona hasta clasificarlas. Las tres zonas se crean automáticamente mediante migrate. Se guardó un respaldo local previo fuera del repositorio, en work.
+
+Actualizar otra instalación con manage.py migrate. Iniciar el servidor desde VS Code sin --noreload para detectar cambios Python.
+
+## Navegación y últimos cambios
+
+El hub principal /dashboard/ muestra las tareas personales y los últimos 20 cambios del equipo. El usuario base ve los últimos cambios únicamente de tareas que puede consultar. El Gantt tiene su menú independiente en /gantt/, reservado a supervisores.
+
+Aplicar filtros y Limpiar filtros actualizan la sección mediante fetch sin recargar la página. Cambiar un selector por sí solo no consulta al servidor. Se conserva la URL filtrada y la navegación atrás/adelante. Si JavaScript no está disponible, el formulario GET sigue funcionando con navegación normal. Los errores de conexión conservan el contenido previo y permiten reintentar.
+
+Filtros añadidos: supervisor a cargo y estado de tarea. Se combinan con zona, trabajador, fechas, prioridad y múltiples responsables.
+
+Se registran creación, reasignación y cambios de estado, prioridad, supervisor, fechas y zonas, con actor, fecha y valores anteriores/nuevos. Guardar sin cambios no genera un evento. La migración importa las asignaciones históricas conservando sus fechas; no reconstruye cambios de seguimiento anteriores que no se registraban.
+
+
+## Semáforo de vencimientos y alertas
+
+Cada tarea tiene fecha y hora de inicio y límite, en America/Santiago. Para registros anteriores se conserva la fecha con inicio 00:00:00 y vencimiento 23:59:59. El supervisor puede ajustar ambas horas desde Actualizar seguimiento. Se registran estos cambios en el historial.
+
+- Duración mayor a 24 horas: verde cuando faltan más de 48 h; amarillo entre 24 y 48 h inclusive; rojo cuando faltan menos de 24 h.
+- Duración de hasta 24 horas: primer tercio verde, segundo amarillo, tercero rojo. Ejemplo 09:00–18:00: verde hasta las 12:00, amarillo desde las 12:00, rojo desde las 15:00, vencida a las 18:00.
+- Las tareas futuras son verdes, las vencidas rojas y las finalizadas neutras y excluidas de alertas.
+- Los colores indican plazo, independientemente de la prioridad manual. El Gantt conserva escala por fechas y muestra horas en las filas.
+- Colores actualizados en pantalla cada 30 segundos según el reloj del dispositivo. Alertas del hub consultadas al servidor cada minuto, con aviso si falla la conexión. Mantener los relojes sincronizados.
+- El hub muestra tareas amarillas, rojas y vencidas: todas para supervisores y únicamente las visibles para usuarios base. No se envían correos ni notificaciones externas.
+
+El logo original de Todotoner se sirve localmente en static/brand/logo.png y se usa en la cabecera, el favicon y el 404. Los selectores muestran nombre y apellido registrados, sin @usuario; las cuentas sin nombre usan el nombre de usuario como alternativa.
+
+## Interfaz compacta y Dashboard TV
+
+La interfaz diaria usa tamaños y espaciados menores. En escritorio, el hub del supervisor presenta tareas a la izquierda y alertas/historial a la derecha, con desplazamiento interno en estos últimos. En móvil se apilan los bloques y se conservan controles táctiles.
+
+Supervisores y gerencia tienen Dashboard TV en el menú (/tv/). Diseño independiente con indicadores grandes, semáforo y seis tareas activas por página, ordenadas por vencimiento. Rota y actualiza cada 20 segundos, permite pausar la rotación sin detener las actualizaciones y activar pantalla completa mediante un botón. Si falla la conexión o caduca la sesión, muestra aviso de datos desactualizados. No requiere cambios de base de datos.
+
+## Eliminación programada y Administración
+
+Gerencia puede programar la eliminación de usuarios base y supervisores desde Usuarios. Se exige la contraseña de gerencia (también para cancelar). La cuenta queda inactiva inmediatamente; el plazo termina a la misma hora tras cinco días de lunes a viernes, sin contar el día de solicitud ni descontar feriados. La vista muestra el vencimiento.
+
+Antes del vencimiento se puede cancelar y restaurar el estado activo/inactivo anterior. Al cumplirse el plazo no se admite cancelación. La eliminación es lógica: conserva usuario, tareas y referencias históricas, pero lo retira de la gestión y los selectores, sin permitir el login. El cierre se materializa automáticamente en la siguiente petición al sistema; no depende de un servidor de tareas externo. Gerencia no se puede eliminar por esta vista. Mientras está pendiente no se permite editar esa cuenta.
+
+La migración agrega el cuarto sector Administración. Las tareas pueden combinarlo con Ventas, Postventas y Bodega.
+
+### Historial y eliminación de tareas
+
+- El menú Historial reúne las tareas finalizadas, las que ocultaste de tu hub y las eliminadas. Los usuarios base mantienen acceso únicamente a las tareas que crearon o tienen asignadas; supervisores y gerencia pueden consultar todas.
+- La × de una tarea vencida o finalizada solo la oculta del hub y las alertas del usuario que la presiona. No elimina registros ni afecta al hub de otros usuarios. Las tareas en proceso no se pueden ocultar, incluso vencidas.
+- Las tareas finalizadas aparecen automáticamente en Historial y pueden permanecer en el hub hasta que el usuario las oculte. Si se reabren o reprograman y dejan de ser ocultables, vuelven al hub.
+- Supervisores y gerencia pueden usar Eliminar tarea desde el detalle, con una pantalla de confirmación. La eliminación es lógica: sale de las vistas activas (hub, alertas, Gantt y TV), pero conserva responsables y cambios, y su detalle queda disponible solo para consulta en Historial.
+- Después de actualizar el proyecto, ejecuta `.\.venv\Scripts\python.exe manage.py migrate` antes de iniciar el servidor.

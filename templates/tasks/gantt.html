@@ -1,0 +1,18 @@
+{% if rows %}
+<div class="gantt-scroll" tabindex="0" role="region" aria-label="Cronograma de tareas, desplazar horizontalmente para ver las fechas">
+<div class="gantt" style="--timeline-width:{{ timeline.min_width }}px">
+<div class="gantt-head"><div class="gantt-label">Tarea / responsables</div><div class="date-axis">{% for tick in timeline.ticks %}<div class="date-tick" style="width:{{ tick.width }}%">{{ tick.date|date:"d M" }}<small>{{ tick.date|date:"Y" }}</small></div>{% endfor %}</div></div>
+{% for row in rows %}<div class="gantt-row">
+<div class="gantt-label"><a href="{% url 'task-detail' row.task.pk %}">{{ row.task.title }}</a>
+<small>{% for person in row.task.assignees.all %}{{ person.display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>
+<small>{{ row.task.start_date|date:"d/m/Y" }} {{ row.task.start_time|time:"H:i" }} → {{ row.task.deadline|date:"d/m/Y" }} {{ row.task.deadline_time|time:"H:i" }}</small>
+<span class="mini-status">{{ row.task.get_status_display }} · Prioridad {{ row.task.get_priority_display }}</span>
+</div>
+<div class="gantt-track">
+<div class="grid-lines" aria-hidden="true">{% for tick in timeline.ticks %}<span style="width:{{ tick.width }}%"></span>{% endfor %}</div>
+{% if timeline.today_left != None %}<span class="today-line" style="left:{{ timeline.today_left }}%" aria-hidden="true"></span>{% endif %}
+<a class="gantt-bar urgency-{{ row.task.urgency }} {% if row.task.status == 'completed' %}bar-completed{% endif %}" data-urgency data-start="{{ row.task.starts_at|date:'c' }}" data-end="{{ row.task.ends_at|date:'c' }}" data-completed="{% if row.task.status == 'completed' %}1{% else %}0{% endif %}" style="left:{{ row.left }}%;width:{{ row.width }}%" href="{% url 'task-detail' row.task.pk %}" title="{{ row.task.title }} · {{ row.task.start_date|date:'d/m/Y' }} a {{ row.task.deadline|date:'d/m/Y' }} · {{ row.task.get_status_display }} · Prioridad {{ row.task.get_priority_display }}" aria-label="{{ row.task.title }}, {{ row.days }} días, {{ row.task.get_status_display }}, prioridad {{ row.task.get_priority_display }}"><span>{{ row.days }} día{{ row.days|pluralize }} · {{ row.task.title }}</span></a>
+</div></div>{% endfor %}
+</div></div>
+{% else %}<div class="empty"><p>No hay tareas para esta selección.</p></div>{% endif %}
+

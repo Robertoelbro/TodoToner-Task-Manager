@@ -1,0 +1,8 @@
+{% extends 'base.html' %}{% load static %}
+{% block title %}Gantt · Turno{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">PLANIFICACIÓN</p><h1>Gantt del equipo</h1><a href="{% url 'dashboard' %}">← Hub principal</a></div><a class="button" href="{% url 'task-create' %}">+ Nueva tarea</a></div>
+<p id="filter-feedback" role="status" aria-live="polite"></p>
+<div id="gantt-content">{% include 'tasks/gantt_section.html' %}</div>
+<script src="{% static 'gantt-filters.js' %}" defer></script>
+{% endblock %}

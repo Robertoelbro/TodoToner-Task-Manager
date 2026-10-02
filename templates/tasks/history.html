@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}
+<div class="page-heading"><div><p class="eyebrow">CONSULTA</p><h1>Historial de tareas</h1><p class="muted">Tareas finalizadas, ocultas de tu hub y eliminadas. Los datos y responsables se conservan.</p></div></div>
+<div class="task-grid">{% for task in page %}{% include 'tasks/card.html' %}{% empty %}<section class="panel empty"><p>No hay tareas en el historial.</p></section>{% endfor %}</div>
+{% if page.has_other_pages %}<nav aria-label="Páginas del historial">{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">Anterior</a>{% endif %} · {{ page.number }} de {{ page.paginator.num_pages }} · {% if page.has_next %}<a href="?page={{ page.next_page_number }}">Siguiente</a>{% endif %}</nav>{% endif %}
+{% endblock %}

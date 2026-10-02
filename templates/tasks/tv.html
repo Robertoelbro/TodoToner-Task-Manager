@@ -1,0 +1,5 @@
+{% load static %}<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Dashboard TV · Todotoner</title><link rel="icon" href="{% static 'brand/logo.png' %}"><link rel="stylesheet" href="{% static 'tv.css' %}"><link rel="stylesheet" href="{% static 'server-clock.css' %}"></head><body>{% include 'server_clock.html' %}
+<header><div class="brand"><img src="{% static 'brand/logo.png' %}" alt="Todotoner"><strong>Estado del equipo</strong></div><nav><a href="{% url 'dashboard' %}">Volver al hub</a><button id="tv-pause" aria-pressed="false">Pausar rotación</button><button id="tv-fullscreen">Pantalla completa</button></nav></header>
+<p id="tv-feedback" role="status" aria-live="polite">Actualización cada 20 segundos · páginas de 6 tareas</p>
+<main id="tv-content" data-url="{% url 'tv-dashboard' %}">{% include 'tasks/tv_content.html' %}</main>
+<script src="{% static 'tv.js' %}" defer></script><script src="{% static 'server-clock.js' %}" defer></script></body></html>

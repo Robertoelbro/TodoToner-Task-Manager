@@ -5,7 +5,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from accounts.models import User
-from .models import AssignmentChange, Task
+from .models import AssignmentChange, Task, Zone, TaskChange
 from .services import reassign_task
 
 
@@ -21,13 +21,15 @@ class TaskPermissionsTests(TestCase):
         cls.task = Task.objects.create(title='Inventario', created_by=cls.base,
                                       deadline=timezone.localdate() + timedelta(days=4))
         cls.task.assignees.add(cls.worker)
+        cls.zone = Zone.objects.get(code='bodega')
+        cls.task.zones.add(cls.zone)
 
     def setUp(self):
         self.client.force_login(self.base)
 
     def test_base_creates_task_with_multiple_assignees(self):
         response = self.client.post(reverse('task-create'), {
-            'title': 'Contar cajas', 'description': 'Bodega',
+            'start_date': timezone.localdate().isoformat(), 'zones': [self.zone.pk], 'priority': 'medium', 'title': 'Contar cajas', 'description': 'Bodega',
             'deadline': (timezone.localdate() + timedelta(days=4)).isoformat(),
             'assignees': [self.worker.pk, self.supervisor.pk], 'created_by': self.other.pk,
         })
@@ -50,7 +52,7 @@ class TaskPermissionsTests(TestCase):
             {'assignees': [999999]},
         ]:
             with self.subTest(extra=extra):
-                data = {'title': 'No crear', 'deadline': timezone.localdate().isoformat(),
+                data = {'start_date': timezone.localdate().isoformat(), 'zones': [self.zone.pk], 'priority': 'medium', 'title': 'No crear', 'deadline': timezone.localdate().isoformat(),
                         'assignees': [self.worker.pk]}
                 data.update(extra)
                 response = self.client.post(reverse('task-create'), data)
@@ -101,12 +103,13 @@ class TaskPermissionsTests(TestCase):
         self.assertEqual(self.client.get(reverse('task-detail', args=[self.task.pk])).status_code, 200)
 
     def test_dashboard_is_supervisor_only_and_includes_workers_without_tasks(self):
-        self.assertEqual(self.client.get(reverse('dashboard')).status_code, 403)
+        self.assertEqual(self.client.get(reverse('gantt')).status_code, 403)
         self.client.force_login(self.supervisor)
-        response = self.client.get(reverse('dashboard'))
+        response = self.client.get(reverse('gantt'))
         self.assertContains(response, 'Inventario')
         self.assertContains(response, 'Otro')
-        self.assertContains(response, 'Sin tareas asignadas.')
+        self.assertContains(response, 'Gantt general')
+        self.assertNotContains(response, 'id="personal-title"')
         self.assertEqual(response.context['task_count'], 1)
 
     def test_login_required_and_csrf_enforced(self):
@@ -119,8 +122,445 @@ class TaskPermissionsTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_deadline_day_is_not_overdue(self):
-        with patch('tasks.models.timezone.localdate', return_value=self.task.deadline):
+        with patch('tasks.models.timezone.now', return_value=self.task.ends_at - timedelta(seconds=1)):
             self.assertFalse(self.task.is_overdue)
-        with patch('tasks.models.timezone.localdate', return_value=self.task.deadline + timedelta(days=1)):
+        with patch('tasks.models.timezone.now', return_value=self.task.ends_at + timedelta(seconds=1)):
             self.assertTrue(self.task.is_overdue)
 
+
+
+    def test_base_cannot_edit_tracking_even_if_assigned(self):
+        for user in [self.base, self.worker]:
+            self.client.force_login(user)
+            url = reverse('task-tracking', args=[self.task.pk])
+            self.assertEqual(self.client.get(url).status_code, 403)
+            self.assertEqual(self.client.post(url, {'status': 'completed', 'priority': 'high'}).status_code, 403)
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.status, Task.Status.PENDING)
+
+    def test_supervisor_updates_tracking_only(self):
+        self.client.force_login(self.supervisor)
+        response = self.client.post(reverse('task-tracking', args=[self.task.pk]), {
+            'priority': 'high', 'status': 'in_review', 'supervisor': self.supervisor.pk,
+            'start_date': self.task.start_date.isoformat(), 'deadline': self.task.deadline.isoformat(), 'zones': [self.zone.pk],
+            'title': 'Tampered', 'assignees': [self.other.pk],
+        })
+        self.assertRedirects(response, reverse('task-detail', args=[self.task.pk]))
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.priority, 'high')
+        self.assertEqual(self.task.status, 'in_review')
+        self.assertEqual(self.task.supervisor, self.supervisor)
+        self.assertEqual(self.task.title, 'Inventario')
+        self.assertSetEqual(set(self.task.assignees.all()), {self.worker})
+
+    def test_tracking_rejects_invalid_supervisor_and_choices(self):
+        self.client.force_login(self.supervisor)
+        for extra in [{'supervisor': self.base.pk}, {'status': 'invalid'}, {'priority': 'urgent'}]:
+            data = {'priority': 'medium', 'status': 'pending', 'supervisor': self.supervisor.pk}
+            data.update(extra)
+            response = self.client.post(reverse('task-tracking', args=[self.task.pk]), data)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.context['form'].errors)
+
+    def test_completed_task_not_counted_as_overdue(self):
+        self.task.deadline = timezone.localdate() - timedelta(days=1)
+        self.task.status = Task.Status.COMPLETED
+        self.task.save()
+        self.assertFalse(self.task.is_overdue)
+        self.client.force_login(self.supervisor)
+        self.assertEqual(self.client.get(reverse('gantt')).context['overdue_count'], 0)
+
+    def test_management_can_supervise(self):
+        self.other.is_superuser = True
+        self.other.save()
+        self.client.force_login(self.other)
+        self.assertEqual(self.other.role_label, 'Gerencia')
+        self.assertEqual(self.client.get(reverse('gantt')).status_code, 200)
+        self.assertEqual(self.client.get(reverse('task-tracking', args=[self.task.pk])).status_code, 200)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class HubTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.supervisor = User.objects.create_user(username='boss', is_supervisor=True)
+        cls.ana = User.objects.create_user(username='ana')
+        cls.juan = User.objects.create_user(username='juan')
+        cls.bodega = Zone.objects.get(code='bodega')
+        cls.postventas = Zone.objects.get(code='postventas')
+        cls.today = timezone.localdate()
+        cls.shared = Task.objects.create(title='Inventario cruzado', created_by=cls.ana,
+            start_date=cls.today - timedelta(days=3), deadline=cls.today + timedelta(days=4), priority='high')
+        cls.shared.assignees.add(cls.ana, cls.juan)
+        cls.shared.zones.add(cls.bodega, cls.postventas)
+        cls.single = Task.objects.create(title='Venta individual', created_by=cls.juan,
+            start_date=cls.today + timedelta(days=10), deadline=cls.today + timedelta(days=12), priority='low')
+        cls.single.assignees.add(cls.ana)
+        cls.single.zones.add(Zone.objects.get(code='ventas'))
+
+    def setUp(self):
+        self.client.force_login(self.supervisor)
+
+    def test_home_routes_supervisor_to_hub(self):
+        self.assertRedirects(self.client.get(reverse('task-list')), reverse('dashboard'))
+
+    def test_general_deduplicates_and_zones_repeat_shared_task(self):
+        response = self.client.get(reverse('gantt'))
+        self.assertEqual(response.context['task_count'], 2)
+        self.assertEqual(len(response.context['timeline']['rows']), 2)
+        groups = {g['name']: g['rows'] for g in response.context['zone_groups']}
+        self.assertEqual(groups['Bodega'][0]['task'], self.shared)
+        self.assertEqual(groups['Postventas'][0]['task'], self.shared)
+        hub = self.client.get(reverse('dashboard'))
+        self.assertEqual(list(hub.context['personal_tasks']), [])
+
+    def test_combined_worker_zone_priority_multiple_filters(self):
+        response = self.client.get(reverse('gantt'), {
+            'worker': self.ana.pk, 'zone': self.bodega.pk, 'priority': 'high', 'multiple': 'on',
+        })
+        self.assertEqual(response.context['task_count'], 1)
+        self.assertEqual(response.context['timeline']['rows'][0]['task'], self.shared)
+        # Count must use all assignees, not just the worker selected in the filter.
+        self.assertEqual(response.context['worker_count'], 2)
+
+    def test_date_overlap_and_inclusive_boundary(self):
+        for day in [self.shared.start_date, self.today, self.shared.deadline]:
+            response = self.client.get(reverse('gantt'), {'date_from': day.isoformat(), 'date_to': day.isoformat()})
+            self.assertEqual(response.context['task_count'], 1)
+            row = response.context['timeline']['rows'][0]
+            self.assertEqual(row['left'], '0.000000')
+            self.assertEqual(row['width'], '100.000000')
+
+    def test_bad_dates_and_missing_results(self):
+        for data in [
+            {'date_from': 'wrong'},
+            {'date_from': '2026-10-10', 'date_to': '2026-10-01'},
+            {'zone': '99999'},
+        ]:
+            response = self.client.get(reverse('gantt'), data)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.context['filter_form'].errors)
+            self.assertEqual(response.context['task_count'], 0)
+        response = self.client.get(reverse('gantt'), {'priority': 'medium'})
+        self.assertContains(response, 'No hay tareas para esta selección.')
+
+    def test_personal_section_is_in_hub_only(self):
+        self.shared.assignees.add(self.supervisor)
+        response = self.client.get(reverse('dashboard'), {'priority': 'low'})
+        self.assertIn(self.shared, response.context['personal_tasks'])
+        self.assertContains(response, 'Últimos cambios en tareas')
+        self.assertNotContains(response, 'id="gantt-filters"')
+
+    def test_dates_and_zones_validated_at_creation(self):
+        self.client.force_login(self.ana)
+        data = {'title': 'Nuevo', 'priority': 'medium', 'start_date': self.today.isoformat(),
+                'deadline': (self.today + timedelta(days=4)).isoformat(),
+                'assignees': [self.ana.pk], 'zones': [self.bodega.pk, self.postventas.pk]}
+        response = self.client.post(reverse('task-create'), data)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(Task.objects.get(title='Nuevo').zones.count(), 2)
+        data['start_date'] = (self.today + timedelta(days=5)).isoformat()
+        response = self.client.post(reverse('task-create'), data)
+        self.assertIn('deadline', response.context['form'].errors)
+        data['start_date'] = self.today.isoformat()
+        data['zones'] = []
+        response = self.client.post(reverse('task-create'), data)
+        self.assertIn('zones', response.context['form'].errors)
+
+    def test_long_range_has_bounded_columns(self):
+        from .gantt import build_timeline
+        timeline = build_timeline([], self.today, self.today + timedelta(days=3000))
+        self.assertLessEqual(len(timeline['ticks']), 90)
+
+
+
+    def test_supervisor_and_status_filters_and_fragment(self):
+        self.shared.supervisor = self.supervisor
+        self.shared.status = 'in_review'
+        self.shared.save()
+        response = self.client.get(reverse('gantt'), {'supervisor': self.supervisor.pk, 'status': 'in_review'},
+                                   HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.context['task_count'], 1)
+        self.assertContains(response, 'Inventario cruzado')
+        self.assertNotContains(response, '<!doctype html>')
+        self.assertEqual(response['X-Turno-Fragment'], 'gantt')
+        response = self.client.get(reverse('gantt'), {'status': 'nonsense'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertTrue(response.context['filter_form'].errors)
+
+    def test_base_cannot_get_gantt_fragment(self):
+        self.client.force_login(self.ana)
+        response = self.client.get(reverse('gantt'), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 403)
+
+    def test_tracking_logs_changes_and_ignores_noop(self):
+        data = {'priority': 'low', 'status': 'in_review', 'supervisor': self.supervisor.pk,
+                'start_date': self.shared.start_date.isoformat(), 'deadline': self.shared.deadline.isoformat(),
+                'zones': [self.bodega.pk]}
+        response = self.client.post(reverse('task-tracking', args=[self.shared.pk]), data)
+        self.assertEqual(response.status_code, 302)
+        event = TaskChange.objects.get(task=self.shared)
+        self.assertEqual(event.actor, self.supervisor)
+        self.assertEqual(event.changes['Prioridad'], {'before': 'Alta', 'after': 'Baja'})
+        self.assertIn('Zonas', event.changes)
+        self.client.post(reverse('task-tracking', args=[self.shared.pk]), data)
+        self.assertEqual(TaskChange.objects.filter(task=self.shared).count(), 1)
+
+    def test_recent_changes_respect_visibility(self):
+        TaskChange.objects.create(task=self.shared, actor=self.supervisor, summary='Evento visible')
+        outsider = User.objects.create_user(username='outsider')
+        hidden = Task.objects.create(title='Privada', created_by=outsider, deadline=self.today)
+        TaskChange.objects.create(task=hidden, actor=self.supervisor, summary='Evento privado')
+        self.client.force_login(self.ana)
+        response = self.client.get(reverse('task-list'))
+        self.assertContains(response, 'Evento visible')
+        self.assertNotContains(response, 'Evento privado')
+        self.client.force_login(self.supervisor)
+        self.assertContains(self.client.get(reverse('dashboard')), 'Evento privado')
+
+    def test_reassignment_creates_feed_event(self):
+        reassign_task(actor=self.supervisor, task_id=self.shared.pk, assignees=[self.ana])
+        event = TaskChange.objects.get(task=self.shared)
+        self.assertEqual(event.summary, 'Responsables actualizados')
+        self.assertIn('Responsables', event.changes)
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class UrgencyTests(TestCase):
+    def task_for_hours(self, hours):
+        from datetime import datetime
+        self.start = timezone.make_aware(datetime(2026, 10, 5, 9, 0))
+        end = self.start + timedelta(hours=hours)
+        return Task(title='Temporal', start_date=self.start.date(), start_time=self.start.time(),
+                    deadline=end.date(), deadline_time=end.time())
+
+    def test_nine_hour_task_uses_thirds(self):
+        task = self.task_for_hours(9)
+        for hours, expected in [(0, 'green'), (2.99, 'green'), (3, 'yellow'),
+                                (5.99, 'yellow'), (6, 'red'), (8.99, 'red'), (9, 'overdue')]:
+            self.assertEqual(task.urgency_at(self.start + timedelta(hours=hours)), expected)
+
+    def test_long_task_exact_thresholds(self):
+        task = self.task_for_hours(96)
+        end = task.ends_at
+        for hours, expected in [(49, 'green'), (48, 'yellow'), (24, 'yellow'),
+                                (23.99, 'red'), (0, 'overdue'), (-1, 'overdue')]:
+            self.assertEqual(task.urgency_at(end - timedelta(hours=hours)), expected)
+
+    def test_completed_and_not_started(self):
+        task = self.task_for_hours(9)
+        self.assertEqual(task.urgency_at(self.start - timedelta(hours=1)), 'green')
+        task.status = Task.Status.COMPLETED
+        self.assertEqual(task.urgency_at(self.start + timedelta(days=3)), 'completed')
+
+    def test_twenty_four_hour_task_is_short(self):
+        task = self.task_for_hours(24)
+        self.assertEqual(task.urgency_at(self.start + timedelta(hours=8)), 'yellow')
+        self.assertEqual(task.urgency_at(self.start + timedelta(hours=16)), 'red')
+
+    def test_alert_visibility_and_completed_exclusion(self):
+        owner = User.objects.create_user(username='alert-owner')
+        stranger = User.objects.create_user(username='stranger')
+        boss = User.objects.create_user(username='alert-boss', is_supervisor=True)
+        task = self.task_for_hours(9)
+        task.created_by = owner
+        task.save()
+        task.assignees.add(owner)
+        with patch('tasks.models.timezone.now', return_value=self.start + timedelta(hours=7)):
+            self.client.force_login(owner)
+            self.assertContains(self.client.get(reverse('task-alerts')), 'Temporal')
+            self.client.force_login(stranger)
+            self.assertNotContains(self.client.get(reverse('task-alerts')), 'Temporal')
+            self.client.force_login(boss)
+            self.assertContains(self.client.get(reverse('task-alerts')), 'Temporal')
+            task.status = Task.Status.COMPLETED
+            task.save()
+            self.assertNotContains(self.client.get(reverse('task-alerts')), 'Temporal')
+        self.client.logout()
+        self.assertEqual(self.client.get(reverse('task-alerts')).status_code, 302)
+
+    def test_form_accepts_hours_and_rejects_reverse_times(self):
+        from .forms import TaskTrackingForm
+        task = self.task_for_hours(9)
+        user = User.objects.create_user(username='time-owner')
+        task.created_by = user
+        task.save()
+        zone = Zone.objects.get(code='bodega')
+        data = {'priority':'medium', 'status':'pending', 'start_date':'2026-10-05',
+                'deadline':'2026-10-05', 'start_time':'09:00', 'deadline_time':'18:00', 'zones':[zone.pk]}
+        form = TaskTrackingForm(data, instance=task)
+        self.assertTrue(form.is_valid(), form.errors)
+        data['deadline_time'] = '08:00'
+        form = TaskTrackingForm(data, instance=task)
+        self.assertFalse(form.is_valid())
+        self.assertIn('deadline_time', form.errors)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class TVTests(TestCase):
+    def setUp(self):
+        self.worker = User.objects.create_user(username='tv-worker')
+        self.boss = User.objects.create_user(username='tv-supervisor', is_supervisor=True)
+        for index in range(8):
+            task = Task.objects.create(title=f'TV tarea {index}', created_by=self.worker,
+                deadline=timezone.localdate()+timedelta(days=index+1))
+            task.assignees.add(self.worker)
+        Task.objects.create(title='No mostrar finalizada', created_by=self.worker,
+            deadline=timezone.localdate(), status=Task.Status.COMPLETED)
+
+    def test_only_supervisors_and_management(self):
+        self.assertEqual(self.client.get(reverse('tv-dashboard')).status_code, 302)
+        self.client.force_login(self.worker)
+        self.assertEqual(self.client.get(reverse('tv-dashboard')).status_code, 403)
+        self.worker.is_superuser = True
+        self.worker.save()
+        self.assertEqual(self.client.get(reverse('tv-dashboard')).status_code, 200)
+
+    def test_tv_pagination_and_completed_exclusion(self):
+        self.client.force_login(self.boss)
+        response = self.client.get(reverse('tv-dashboard'))
+        self.assertEqual(response.context['active_count'], 8)
+        self.assertEqual(len(response.context['page']), 6)
+        self.assertContains(response, 'Pantalla completa')
+        self.assertNotContains(response, 'No mostrar finalizada')
+        response = self.client.get(reverse('tv-dashboard'), {'page': 2}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(len(response.context['page']), 2)
+        self.assertEqual(response['X-Turno-Fragment'], 'tv')
+        self.assertNotContains(response, '<!doctype html>')
+        self.assertEqual(self.client.get(reverse('tv-dashboard'), {'page': 'invalid'}).status_code, 200)
+
+    def test_empty_screen(self):
+        Task.objects.update(status=Task.Status.COMPLETED)
+        self.client.force_login(self.boss)
+        self.assertContains(self.client.get(reverse('tv-dashboard')), 'Sin tareas activas')
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class TaskHistoryTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(username='owner')
+        self.worker = User.objects.create_user(username='worker')
+        self.other = User.objects.create_user(username='other')
+        self.supervisor = User.objects.create_user(username='supervisor', is_supervisor=True)
+        self.manager = User.objects.create_user(username='manager', is_superuser=True)
+        self.task = Task.objects.create(title='Historic task', created_by=self.owner,
+            start_date=timezone.localdate()-timedelta(days=3),
+            deadline=timezone.localdate()-timedelta(days=1))
+        self.task.assignees.add(self.worker)
+        self.client.force_login(self.owner)
+
+    def test_hide_is_personal_and_preserves_task(self):
+        url = reverse('task-hide', args=[self.task.pk])
+        self.assertEqual(self.client.get(url).status_code, 405)
+        self.assertEqual(self.client.post(url).status_code, 302)
+        self.assertNotIn(self.task, self.client.get(reverse('task-list')).context['tasks'])
+        self.assertIn(self.task, self.client.get(reverse('task-history')).context['page'])
+        self.task.refresh_from_db()
+        self.assertIsNone(self.task.deleted_at)
+        self.assertEqual(self.task.assignees.count(), 1)
+        self.client.force_login(self.worker)
+        self.assertIn(self.task, self.client.get(reverse('task-list')).context['tasks'])
+        self.assertNotIn(self.task, self.client.get(reverse('task-history')).context['page'])
+
+    def test_completed_automatically_in_history_and_can_hide(self):
+        self.task.status = Task.Status.COMPLETED
+        self.task.save()
+        self.assertIn(self.task, self.client.get(reverse('task-history')).context['page'])
+        self.assertIn(self.task, self.client.get(reverse('task-list')).context['tasks'])
+        self.assertEqual(self.client.post(reverse('task-hide', args=[self.task.pk])).status_code, 302)
+
+    def test_active_and_in_progress_cannot_hide(self):
+        self.task.status = Task.Status.IN_PROGRESS
+        self.task.save()
+        self.assertEqual(self.client.post(reverse('task-hide', args=[self.task.pk])).status_code, 403)
+        self.task.status = Task.Status.PENDING
+        self.task.deadline = timezone.localdate()+timedelta(days=3)
+        self.task.save()
+        self.assertEqual(self.client.post(reverse('task-hide', args=[self.task.pk])).status_code, 403)
+        self.assertFalse(self.task.hidden_by.exists())
+
+    def test_base_cannot_delete_and_unrelated_cannot_see_or_hide(self):
+        self.assertEqual(self.client.post(reverse('task-delete', args=[self.task.pk]), {'confirm':'yes'}).status_code,403)
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.post(reverse('task-hide', args=[self.task.pk])).status_code,404)
+        self.assertEqual(self.client.get(reverse('task-detail', args=[self.task.pk])).status_code,404)
+        self.assertNotIn(self.task,self.client.get(reverse('task-history')).context['page'])
+
+    def test_supervisor_delete_requires_confirmation_and_preserves_relations(self):
+        self.client.force_login(self.supervisor)
+        AssignmentChange.objects.create(task=self.task, actor=self.owner, new_assignees=[])
+        url = reverse('task-delete', args=[self.task.pk])
+        self.assertEqual(self.client.get(url).status_code,200)
+        self.task.refresh_from_db()
+        self.assertIsNone(self.task.deleted_at)
+        self.assertEqual(self.client.post(url).status_code,400)
+        self.assertEqual(self.client.post(url,{'confirm':'yes'}).status_code,302)
+        self.task.refresh_from_db()
+        self.assertIsNotNone(self.task.deleted_at)
+        self.assertEqual(self.task.deleted_by,self.supervisor)
+        self.assertEqual(self.task.assignees.count(),1)
+        self.assertEqual(self.task.assignment_changes.count(),1)
+        self.assertTrue(TaskChange.objects.filter(task=self.task,actor=self.supervisor).exists())
+        self.assertIn(self.task,self.client.get(reverse('task-history')).context['page'])
+        self.assertEqual(self.client.get(reverse('task-detail',args=[self.task.pk])).status_code,200)
+        for name in ['task-tracking','task-reassign']:
+            for method in ['get','post']:
+                self.assertEqual(getattr(self.client,method)(reverse(name,args=[self.task.pk])).status_code,404)
+        from .views import visible_tasks, deadline_alerts
+        self.assertNotIn(self.task,visible_tasks(self.supervisor))
+        self.assertNotIn(self.task,deadline_alerts(self.supervisor))
+        self.assertEqual(self.client.get(reverse('gantt')).context['task_count'],0)
+        self.assertEqual(self.client.get(reverse('tv-dashboard')).context['active_count'],0)
+        self.client.force_login(self.owner)
+        self.assertIn(self.task,self.client.get(reverse('task-history')).context['page'])
+        self.assertNotIn(self.task,self.client.get(reverse('task-list')).context['tasks'])
+        self.client.force_login(self.other)
+        self.assertNotIn(self.task,self.client.get(reverse('task-history')).context['page'])
+
+    def test_management_can_delete(self):
+        self.client.force_login(self.manager)
+        self.assertEqual(self.client.post(reverse('task-delete',args=[self.task.pk]),{'confirm':'yes'}).status_code,302)
+
+    def test_hide_requires_csrf(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.owner)
+        self.assertEqual(client.post(reverse('task-hide',args=[self.task.pk])).status_code,403)
+
+    def test_reopened_task_returns_to_hub(self):
+        self.task.status = Task.Status.COMPLETED
+        self.task.save()
+        self.task.hidden_by.add(self.owner)
+        self.client.force_login(self.supervisor)
+        response = self.client.post(reverse('task-tracking',args=[self.task.pk]),{
+            'status':'in_progress','priority':'medium',
+            'start_date':timezone.localdate().isoformat(),
+            'deadline':(timezone.localdate()+timedelta(days=3)).isoformat(),
+            'zones':[Zone.objects.get(code='bodega').pk],
+        })
+        self.assertEqual(response.status_code,302)
+        self.assertFalse(self.task.hidden_by.exists())
+        self.client.force_login(self.owner)
+        self.assertIn(self.task,self.client.get(reverse('task-list')).context['tasks'])
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class GanttMonthTests(TestCase):
+    def test_month_range_and_overdue_filter(self):
+        from datetime import date
+        from calendar import monthrange
+        supervisor = User.objects.create_user(username='month-supervisor', is_supervisor=True)
+        today = timezone.localdate()
+        first = today.replace(day=1)
+        last = today.replace(day=monthrange(today.year, today.month)[1])
+        active = Task.objects.create(title='Current', created_by=supervisor, start_date=first, deadline=last)
+        old = Task.objects.create(title='Old', created_by=supervisor, start_date=date(2020,1,1), deadline=date(2020,1,5))
+        self.client.force_login(supervisor)
+        response = self.client.get(reverse('gantt'))
+        self.assertEqual(response.context['timeline']['start'],first)
+        self.assertEqual(response.context['timeline']['end'],last)
+        self.assertEqual(response.context['task_count'],1)
+        response = self.client.get(reverse('gantt'),{'overdue':'1','date_from':'2020-01-01','date_to':'2020-01-31'},HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response['X-Turno-Fragment'],'gantt')
+        self.assertEqual([row['task'] for row in response.context['timeline']['rows']],[old])
+        self.assertContains(response,'name="overdue" value="1"')
+        old.status = Task.Status.COMPLETED
+        old.save()
+        response = self.client.get(reverse('gantt'),{'overdue':'1','date_from':'2020-01-01','date_to':'2020-01-31'})
+        self.assertEqual(response.context['task_count'],0)

@@ -1,0 +1,6 @@
+{% extends 'base.html' %}{% block title %}Usuarios · Todotoner{% endblock %}{% block content %}
+<div class="page-heading"><div><p class="eyebrow">GERENCIA</p><h1>Gestión de usuarios</h1><p class="muted">Edita los datos de los trabajadores y asigna o retira el permiso de supervisor.</p></div></div>
+{% if form %}<section class="panel form-panel"><h2>Editar {{ target_user.display_name }}</h2><form method="post">{% csrf_token %}{% include 'fields.html' %}<button>Guardar cambios</button> <a href="{% url 'users-manage' %}">Cancelar</a></form></section>{% else %}
+<div class="task-grid">{% for person in people %}<article class="panel"><h2>{{ person.display_name }}</h2><p>{{ person.email|default:"Sin correo" }}</p><p>{{ person.role_label }}{% if not person.is_active %} · Inactivo{% endif %}</p>{% if person.deletion_due_at %}<p>Eliminación programada: {{ person.deletion_due_at|date:"d/m/Y H:i" }}</p>{% if person.can_cancel_deletion %}<a class="button" href="{% url 'user-delete-cancel' person.pk %}">Cancelar eliminación</a>{% endif %}{% elif not person.is_superuser %}<a class="button" href="{% url 'user-edit' person.pk %}">Editar usuario</a> <a class="button danger" href="{% url 'user-delete' person.pk %}">Eliminar usuario</a>{% else %}<span class="help">Cuenta de gerencia</span>{% endif %}</article>{% endfor %}</div>
+{% endif %}
+{% endblock %}

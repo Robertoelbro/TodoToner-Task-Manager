@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Iniciar sesión · Turno{% endblock %}
 {% block content %}
-<section class="auth-layout"><div class="intro"><p class="eyebrow">TU EQUIPO, EN UN MISMO LUGAR</p><h1>Organiza el trabajo.<br>Comparte el avance.</h1><p>Accede a tus tareas, consulta sus responsables y mantén las fechas límite a la vista.</p><div class="feature">01 · Tareas compartidas</div><div class="feature">02 · Responsables claros</div><div class="feature">03 · Seguimiento del equipo</div></div>
+<section class="login-centered">
 <div class="panel auth"><p class="eyebrow">BIENVENIDO A TURNO</p><h2>Iniciar sesión</h2><p class="muted">Ingresa con tu nombre de usuario.</p>
 <form method="post">{% csrf_token %}{% include 'fields.html' %}
 {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}

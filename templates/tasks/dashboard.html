@@ -1,7 +1,10 @@
-{% extends 'base.html' %}{% block content %}
-<div class="page-heading"><div><p class="eyebrow">VISTA DE SUPERVISIÓN</p><h1>El trabajo de tu equipo</h1><p class="muted">Todos los usuarios y sus tareas asignadas. Actualiza la página para ver cambios.</p></div><a class="button" href="{% url 'task-create' %}">+ Nueva tarea</a></div>
-<div class="stats"><div class="panel"><span>Usuarios</span><strong>{{ worker_count }}</strong></div><div class="panel"><span>Tareas únicas</span><strong>{{ task_count }}</strong></div><div class="panel"><span>Fuera de plazo</span><strong>{{ overdue_count }}</strong></div></div>
-{% for worker in workers %}<section class="worker-section"><div class="worker-heading"><h2>{{ worker.display_name }}</h2><span class="muted">@{{ worker.username }} · {% if worker.is_supervisor %}Supervisor{% else %}Usuario base{% endif %}{% if not worker.is_active %} · Inactivo{% endif %}</span></div>
-<div class="task-grid">{% for task in worker.assigned_tasks.all %}{% include 'tasks/card.html' %}{% empty %}<p class="muted">Sin tareas asignadas.</p>{% endfor %}</div></section>{% empty %}<p>Sin usuarios registrados.</p>{% endfor %}
-{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Hub supervisor · Turno{% endblock %}
+{% block content %}
 
+<div class="page-heading"><div><p class="eyebrow">ESPACIO DE SUPERVISIÓN</p><h1>Hola, {{ user.display_name }}</h1><p class="muted">Tu trabajo y el de todo el equipo, en un solo lugar.</p></div><a class="button" href="{% url 'task-create' %}">+ Nueva tarea</a></div>
+<div class="hub-layout"><section class="personal-section" aria-labelledby="personal-title"><div class="section-heading"><div><p class="eyebrow">01 / MI ESPACIO</p><h2 id="personal-title">Mis tareas</h2><p class="muted">Tareas que creaste o en las que eres responsable.</p></div><span class="badge">{{ personal_tasks|length }} tareas</span></div>
+<div class="task-grid">{% for task in personal_tasks %}{% include 'tasks/card.html' %}{% empty %}<div class="panel empty"><p>Sin tareas personales por ahora.</p></div>{% endfor %}</div></section>
+
+<aside class="hub-side"><div id="deadline-alerts" data-url="{% url 'task-alerts' %}">{% include 'tasks/alerts.html' %}</div>{% include 'tasks/recent_changes.html' %}</aside></div>
+{% endblock %}

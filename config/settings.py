@@ -14,7 +14,9 @@ INSTALLED_APPS = [
 ]
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'accounts.deletion.FinalizeDeletionMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'config.middleware.FriendlyNotFoundMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
