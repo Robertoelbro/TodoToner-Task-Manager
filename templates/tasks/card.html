@@ -10,5 +10,6 @@
 <p class="deadline">Fecha límite <strong>{{ task.deadline|date:"d M Y" }} {{ task.deadline_time|time:"H:i" }}</strong></p>
 <p class="muted">Supervisor: {{ task.supervisor.display_name|default:"Sin asignar" }}</p>
 <div class="people">{% for person in task.assignees.all %}<span>{{ person.display_name }}</span>{% endfor %}</div>
+{% with event=task.last_modification %}{% if event %}<p class="help">Modificado por: {{ event.actor.display_name }} · {{ event.created_at|date:"d/m/Y H:i" }}</p>{% endif %}{% endwith %}
 </article>
 

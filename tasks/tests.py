@@ -223,18 +223,17 @@ class HubTests(TestCase):
         # Count must use all assignees, not just the worker selected in the filter.
         self.assertEqual(response.context['worker_count'], 2)
 
-    def test_date_overlap_and_inclusive_boundary(self):
+    def test_month_overlap_and_inclusive_boundary(self):
         for day in [self.shared.start_date, self.today, self.shared.deadline]:
-            response = self.client.get(reverse('gantt'), {'date_from': day.isoformat(), 'date_to': day.isoformat()})
-            self.assertEqual(response.context['task_count'], 1)
-            row = response.context['timeline']['rows'][0]
-            self.assertEqual(row['left'], '0.000000')
-            self.assertEqual(row['width'], '100.000000')
+            response = self.client.get(reverse('gantt'), {'month':day.month, 'year':day.year})
+            tasks = [row['task'] for row in response.context['timeline']['rows']]
+            self.assertIn(self.shared, tasks)
+            self.assertEqual(response.context['timeline']['start'].day,1)
 
     def test_bad_dates_and_missing_results(self):
         for data in [
-            {'date_from': 'wrong'},
-            {'date_from': '2026-10-10', 'date_to': '2026-10-01'},
+            {'year': 'wrong'},
+            {'month': '13', 'year': '2026'},
             {'zone': '99999'},
         ]:
             response = self.client.get(reverse('gantt'), data)
@@ -458,7 +457,7 @@ class TaskHistoryTests(TestCase):
         self.assertEqual(self.task.assignees.count(), 1)
         self.client.force_login(self.worker)
         self.assertIn(self.task, self.client.get(reverse('task-list')).context['tasks'])
-        self.assertNotIn(self.task, self.client.get(reverse('task-history')).context['page'])
+        self.assertIn(self.task, self.client.get(reverse('task-history')).context['page'])
 
     def test_completed_automatically_in_history_and_can_hide(self):
         self.task.status = Task.Status.COMPLETED
@@ -552,11 +551,49 @@ class GanttMonthTests(TestCase):
         self.assertEqual(response.context['timeline']['start'],first)
         self.assertEqual(response.context['timeline']['end'],last)
         self.assertEqual(response.context['task_count'],1)
-        response = self.client.get(reverse('gantt'),{'overdue':'1','date_from':'2020-01-01','date_to':'2020-01-31'},HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        response = self.client.get(reverse('gantt'),{'overdue':'1','month':'1','year':'2020'},HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(response['X-Turno-Fragment'],'gantt')
         self.assertEqual([row['task'] for row in response.context['timeline']['rows']],[old])
         self.assertContains(response,'name="overdue" value="1"')
         old.status = Task.Status.COMPLETED
         old.save()
-        response = self.client.get(reverse('gantt'),{'overdue':'1','date_from':'2020-01-01','date_to':'2020-01-31'})
+        response = self.client.get(reverse('gantt'),{'overdue':'1','month':'1','year':'2020'})
         self.assertEqual(response.context['task_count'],0)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class HistoryRevisionTests(TestCase):
+    def test_all_states_newest_first_creation_month_and_permissions(self):
+        user = User.objects.create_user(username='history-reader')
+        other = User.objects.create_user(username='other-reader')
+        tasks = [Task.objects.create(title=status, status=status, created_by=user,
+            deadline=timezone.localdate()+timedelta(days=4)) for status in Task.Status.values]
+        private = Task.objects.create(title='Private', created_by=other, deadline=timezone.localdate())
+        self.client.force_login(user)
+        page = self.client.get(reverse('task-history')).context['page']
+        self.assertEqual(list(page), list(reversed(tasks)))
+        self.assertNotIn(private,page)
+        earlier = timezone.now()-timedelta(days=400)
+        Task.objects.filter(pk=tasks[0].pk).update(created_at=earlier)
+        local = timezone.localtime(earlier)
+        result = self.client.get(reverse('task-history'),{'month':local.month,'year':local.year})
+        self.assertEqual(list(result.context['page']),[tasks[0]])
+        result = self.client.get(reverse('task-history'),{'month':'1'})
+        self.assertTrue(result.context['filter_form'].errors)
+        self.assertEqual(result.context['page'].paginator.count,0)
+        self.assertContains(self.client.get(reverse('task-list')), 'hub-layout')
+
+    def test_latest_actor_and_full_detail_log(self):
+        user = User.objects.create_user(username='history-owner')
+        supervisor = User.objects.create_user(username='history-supervisor',first_name='Roberto',is_supervisor=True)
+        task = Task.objects.create(title='Audit task',created_by=user,deadline=timezone.localdate())
+        TaskChange.objects.create(task=task,actor=user,summary='Tarea creada')
+        event = TaskChange.objects.create(task=task,actor=supervisor,summary='Seguimiento actualizado',changes={'Estado':{'before':'Pendiente','after':'En proceso'}})
+        self.client.force_login(user)
+        response = self.client.get(reverse('task-detail',args=[task.pk]))
+        self.assertContains(response,'Modificado por: Roberto')
+        self.assertContains(response,'Historial de modificaciones')
+        self.assertContains(response,'Pendiente → En proceso')
+        self.assertEqual(response.context['task'].last_modification,event)
+        self.client.force_login(User.objects.create_user(username='unrelated-reader'))
+        self.assertEqual(self.client.get(reverse('task-detail',args=[task.pk])).status_code,404)

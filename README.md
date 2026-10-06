@@ -179,3 +179,17 @@ La migración agrega el cuarto sector Administración. Las tareas pueden combina
 - Las tareas finalizadas aparecen automáticamente en Historial y pueden permanecer en el hub hasta que el usuario las oculte. Si se reabren o reprograman y dejan de ser ocultables, vuelven al hub.
 - Supervisores y gerencia pueden usar Eliminar tarea desde el detalle, con una pantalla de confirmación. La eliminación de tareas es definitiva: borra la tarea, sus relaciones y sus cambios de la base de datos y del historial. El botón de confirmación espera 5 segundos. Los usuarios y las zonas se conservan. Ocultar con × sigue siendo una acción personal que conserva la tarea.
 - Después de actualizar el proyecto, ejecuta `.\.venv\Scripts\python.exe manage.py migrate` antes de iniciar el servidor.
+
+
+### Historial completo y filtros mensuales
+El historial incluye todas las tareas conservadas a las que tiene acceso el usuario,
+ordenadas por creación descendente. Los filtros Mes y Año consultan la fecha de creación;
+sin selección se muestran todos los períodos. Un mes requiere un año.
+El Gantt usa Mes y Año para el período planificado (incluye tareas que cruzan meses),
+abre el mes actual y permite consultar un año completo dejando Mes vacío.
+Cada detalle muestra el historial de modificaciones con autor, fecha y valores anteriores/nuevos.
+Las tarjetas y el historial identifican al último autor de una modificación efectiva;
+la creación y guardar sin cambios no se presentan como modificaciones.
+El hub base utiliza la misma distribución de tareas y panel lateral que supervisión,
+conservando sus permisos y su alcance personal. Las tareas borradas definitivamente
+no se pueden recuperar desde este historial.

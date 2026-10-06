@@ -1,7 +1,10 @@
-{% extends 'base.html' %}{% block content %}
-<div id="deadline-alerts" data-url="{% url 'task-alerts' %}">{% include 'tasks/alerts.html' %}</div>
-<div class="page-heading"><div><p class="eyebrow">CONTROL DE ACTIVIDADES</p><h1>{% if user.can_supervise %}Todas las tareas{% else %}Mis tareas{% endif %}</h1><p class="muted">{% if user.can_supervise %}Consulta las tareas de todo el equipo.{% else %}Tareas que creaste o en las que eres responsable.{% endif %}</p></div><a class="button" href="{% url 'task-create' %}">+ Nueva tarea</a></div>
-<div class="task-grid">{% for task in tasks %}{% include 'tasks/card.html' %}{% empty %}<section class="panel empty"><h2>Todo listo para comenzar</h2><p>Aún no hay tareas para mostrar.</p><a href="{% url 'task-create' %}">Crear la primera tarea →</a></section>{% endfor %}</div>
-{% include 'tasks/recent_changes.html' %}
-{% endblock %}
+{% extends 'base.html' %}
+{% block title %}Mi hub · Turno{% endblock %}
+{% block content %}
 
+<div class="page-heading"><div><p class="eyebrow">MI ESPACIO</p><h1>Hola, {{ user.display_name }}</h1><p class="muted">Tus tareas, alertas y últimos cambios, en un solo lugar.</p></div><a class="button" href="{% url 'task-create' %}">+ Nueva tarea</a></div>
+<div class="hub-layout"><section class="personal-section" aria-labelledby="personal-title"><div class="section-heading"><div><p class="eyebrow">01 / MI ESPACIO</p><h2 id="personal-title">Mis tareas</h2><p class="muted">Tareas que creaste o en las que eres responsable.</p></div><span class="badge">{{ tasks|length }} tareas</span></div>
+<div class="task-grid">{% for task in tasks %}{% include 'tasks/card.html' %}{% empty %}<div class="panel empty"><p>Sin tareas personales por ahora.</p></div>{% endfor %}</div></section>
+
+<aside class="hub-side"><div id="deadline-alerts" data-url="{% url 'task-alerts' %}">{% include 'tasks/alerts.html' %}</div>{% include 'tasks/recent_changes.html' %}</aside></div>
+{% endblock %}

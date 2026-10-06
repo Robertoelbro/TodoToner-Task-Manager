@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Prefetch
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
@@ -13,7 +13,7 @@ from .services import reassign_task, snapshot, tracking_snapshot
 
 
 def visible_tasks(user, include_deleted=False):
-    queryset = Task.objects.select_related('created_by', 'supervisor').prefetch_related('assignees', 'zones')
+    queryset = Task.objects.select_related('created_by', 'supervisor').prefetch_related('assignees', 'zones', Prefetch('changes', queryset=TaskChange.objects.exclude(changes={}).select_related('actor'), to_attr='modifications'))
     if not include_deleted:
         queryset = queryset.filter(deleted_at__isnull=True)
     if user.can_supervise:
@@ -53,7 +53,8 @@ def task_create(request):
 def task_detail(request, pk):
     task = get_object_or_404(visible_tasks(request.user, include_deleted=True), pk=pk)
     return render(request, 'tasks/detail.html', {'task': task,
-                  'changes': task.assignment_changes.select_related('actor')})
+                  'changes': task.assignment_changes.select_related('actor'),
+                  'task_events': task.changes.select_related('actor')})
 
 
 @login_required
@@ -77,7 +78,11 @@ def gantt_view(request):
     if not request.user.can_supervise:
         raise PermissionDenied
     from .gantt import build_timeline
-    form = DashboardFilterForm(request.GET)
+    period_params = request.GET.copy()
+    if not period_params.get('month') and not period_params.get('year'):
+        today = timezone.localdate()
+        period_params['month'], period_params['year'] = str(today.month), str(today.year)
+    form = DashboardFilterForm(period_params)
     queryset = Task.objects.filter(deleted_at__isnull=True).select_related('supervisor').prefetch_related('assignees', 'zones').annotate(
         responsible_count=Count('assignees', distinct=True))
     valid = form.is_valid()
@@ -96,14 +101,13 @@ def gantt_view(request):
         queryset = queryset.filter(status=filters['status'])
     if filters.get('multiple'):
         queryset = queryset.filter(responsible_count__gt=1)
-    if filters.get('date_from'):
-        queryset = queryset.filter(deadline__gte=filters['date_from'])
-    if filters.get('date_to'):
-        queryset = queryset.filter(start_date__lte=filters['date_to'])
     from calendar import monthrange
-    anchor = filters.get('date_from') or filters.get('date_to') or timezone.localdate()
-    date_from = filters.get('date_from') or anchor.replace(day=1)
-    date_to = filters.get('date_to') or anchor.replace(day=monthrange(anchor.year, anchor.month)[1])
+    from datetime import date
+    today = timezone.localdate()
+    year = filters.get('year') or today.year
+    month = filters.get('month')
+    date_from = date(year, month or 1, 1)
+    date_to = date(year, month or 12, monthrange(year, month or 12)[1])
     queryset = queryset.filter(deadline__gte=date_from, start_date__lte=date_to)
     filtered = list(queryset.distinct())
     overdue_only = request.GET.get('overdue') == '1'
@@ -228,9 +232,7 @@ def hub_tasks(user, personal=False):
 @require_http_methods(['GET'])
 def task_history(request):
     from django.core.paginator import Paginator
-    tasks = visible_tasks(request.user, include_deleted=True).filter(
-        Q(status=Task.Status.COMPLETED) | Q(hidden_by=request.user) | Q(deleted_at__isnull=False)
-    ).distinct().order_by('-created_at', '-pk')
+    tasks = visible_tasks(request.user, include_deleted=True).order_by('-created_at', '-pk')
     from .forms import HistoryFilterForm
     form = HistoryFilterForm(request.GET)
     if form.is_valid():
@@ -241,10 +243,10 @@ def task_history(request):
             tasks = tasks.filter(zones=filters['zone'])
         if filters.get('status'):
             tasks = tasks.filter(status=filters['status'])
-        if filters.get('date_from'):
-            tasks = tasks.filter(deadline__gte=filters['date_from'])
-        if filters.get('date_to'):
-            tasks = tasks.filter(start_date__lte=filters['date_to'])
+        if filters.get('year'):
+            tasks = tasks.filter(created_at__year=filters['year'])
+        if filters.get('month'):
+            tasks = tasks.filter(created_at__month=filters['month'])
     else:
         tasks = tasks.none()
     page = Paginator(tasks.distinct(), 50).get_page(request.GET.get('page'))

@@ -73,8 +73,10 @@ class TaskTrackingForm(ScheduleValidationMixin, forms.ModelForm):
 class DashboardFilterForm(forms.Form):
     zone = forms.ModelChoiceField(label='Zona', queryset=Zone.objects.all(), required=False, empty_label='Todas las zonas')
     worker = forms.ModelChoiceField(label='Trabajador', queryset=User.objects.filter(deleted_at__isnull=True).order_by('first_name', 'username'), required=False, empty_label='Todos los trabajadores')
-    date_from = forms.DateField(label='Desde', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
-    date_to = forms.DateField(label='Hasta', required=False, widget=forms.DateInput(attrs={'type': 'date'}))
+    month = forms.TypedChoiceField(label='Mes', required=False, coerce=int, empty_value=None,
+        choices=[('', 'Todos los meses')] + list(enumerate(['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'], 1)))
+    year = forms.IntegerField(label='Año', required=False, min_value=1900, max_value=9998,
+        widget=forms.Select(choices=[('', 'Todos los años')] + [(year, year) for year in range(2000, 2101)]))
     priority = forms.ChoiceField(label='Prioridad', required=False, choices=[('', 'Todas las prioridades')] + list(Task.Priority.choices))
     supervisor = forms.ModelChoiceField(label='Supervisor a cargo', queryset=User.objects.filter(is_supervisor=True, deleted_at__isnull=True).order_by('first_name', 'username'), required=False, empty_label='Todos los supervisores')
     status = forms.ChoiceField(label='Estado', required=False, choices=[('', 'Todos los estados')] + list(Task.Status.choices))
@@ -82,8 +84,8 @@ class DashboardFilterForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        if data.get('date_from') and data.get('date_to') and data['date_from'] > data['date_to']:
-            raise forms.ValidationError('La fecha Desde no puede ser posterior a Hasta.')
+        if data.get('month') and not data.get('year'):
+            self.add_error('year', 'Selecciona el año para consultar ese mes.')
         return data
 
 

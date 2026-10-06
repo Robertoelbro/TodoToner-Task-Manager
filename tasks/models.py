@@ -53,6 +53,12 @@ class Task(models.Model):
         ordering = ['deadline', '-created_at']
 
     @property
+    def last_modification(self):
+        if hasattr(self, 'modifications'):
+            return next(iter(self.modifications), None)
+        return self.changes.exclude(changes={}).select_related('actor').first()
+
+    @property
     def starts_at(self):
         return timezone.make_aware(datetime.combine(self.start_date, self.start_time))
 
