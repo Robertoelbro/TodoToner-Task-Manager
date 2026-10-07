@@ -95,3 +95,19 @@ class HistoryFilterForm(DashboardFilterForm):
         for name in ('priority', 'supervisor', 'multiple'):
             self.fields.pop(name)
         self.fields['worker'].queryset = User.objects.all().order_by('first_name', 'username')
+
+
+from .models import MonthlyGoal
+
+
+class MonthlyGoalForm(forms.ModelForm):
+    month = forms.DateField(label='Mes de la meta', input_formats=['%Y-%m'],
+        widget=forms.DateInput(format='%Y-%m', attrs={'type': 'month'}))
+
+    class Meta:
+        model = MonthlyGoal
+        fields = ('title', 'description', 'month', 'zones')
+        widgets = {'description': forms.Textarea(attrs={'rows': 3}), 'zones': forms.CheckboxSelectMultiple()}
+
+    def clean_month(self):
+        return self.cleaned_data['month'].replace(day=1)

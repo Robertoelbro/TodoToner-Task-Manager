@@ -597,3 +597,38 @@ class HistoryRevisionTests(TestCase):
         self.assertEqual(response.context['task'].last_modification,event)
         self.client.force_login(User.objects.create_user(username='unrelated-reader'))
         self.assertEqual(self.client.get(reverse('task-detail',args=[task.pk])).status_code,404)
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class MonthlyGoalTests(TestCase):
+    def test_creation_permissions_and_visibility(self):
+        from .models import MonthlyGoal
+        base = User.objects.create_user(username='goal-base')
+        supervisor = User.objects.create_user(username='goal-supervisor',is_supervisor=True)
+        manager = User.objects.create_user(username='goal-manager',is_superuser=True)
+        data = {'title':'Objetivo mensual de prueba','month':timezone.localdate().strftime('%Y-%m'),
+                'zones':list(Zone.objects.values_list('pk',flat=True)[:2]),'created_by':base.pk}
+        self.client.force_login(base)
+        for method in ('get','post'):
+            self.assertEqual(getattr(self.client,method)(reverse('monthly-goal-create'),data).status_code,403)
+        self.assertEqual(MonthlyGoal.objects.count(),0)
+        for creator in (supervisor,manager):
+            self.client.force_login(creator)
+            self.assertEqual(self.client.post(reverse('monthly-goal-create'),data).status_code,302)
+            goal = MonthlyGoal.objects.latest('pk')
+            self.assertEqual(goal.created_by,creator)
+            self.assertEqual(goal.month.day,1)
+            self.assertEqual(goal.zones.count(),2)
+        for user,url in ((base,'task-list'),(supervisor,'dashboard'),(manager,'dashboard')):
+            self.client.force_login(user)
+            self.assertContains(self.client.get(reverse(url)),data['title'])
+        MonthlyGoal.objects.update(month=timezone.localdate().replace(year=2020,month=1,day=1))
+        self.assertNotContains(self.client.get(reverse('dashboard')),data['title'])
+
+    def test_invalid_input_does_not_create_goal(self):
+        from .models import MonthlyGoal
+        self.client.force_login(User.objects.create_user(username='goal-validator',is_supervisor=True))
+        for month,zones in [('2026-13',[Zone.objects.first().pk]),('2026-10',[]),('bad',[99999])]:
+            response=self.client.post(reverse('monthly-goal-create'),{'title':'Invalid','month':month,'zones':zones})
+            self.assertEqual(response.status_code,200)
+            self.assertTrue(response.context['form'].errors)
+        self.assertEqual(MonthlyGoal.objects.count(),0)

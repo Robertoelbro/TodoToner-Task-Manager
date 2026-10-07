@@ -126,3 +126,19 @@ class TaskChange(models.Model):
 
     class Meta:
         ordering = ['-created_at', '-pk']
+
+
+class MonthlyGoal(models.Model):
+    title = models.CharField('Hito o meta', max_length=160)
+    description = models.TextField('Descripción y objetivo', blank=True)
+    month = models.DateField('Mes')
+    zones = models.ManyToManyField(Zone, related_name='monthly_goals', verbose_name='Zonas')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='monthly_goals')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-month', '-created_at', '-pk']
+        constraints = [models.CheckConstraint(condition=models.Q(month__day=1), name='goal_month_first_day')]
+
+    def __str__(self):
+        return self.title

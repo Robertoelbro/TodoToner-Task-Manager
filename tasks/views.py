@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from accounts.models import User
 from .forms import ReassignmentForm, TaskForm, TaskTrackingForm, DashboardFilterForm
-from .models import AssignmentChange, Task, Zone, TaskChange
+from .models import AssignmentChange, Task, Zone, TaskChange, MonthlyGoal
 from .services import reassign_task, snapshot, tracking_snapshot
 
 
@@ -26,7 +26,7 @@ def visible_tasks(user, include_deleted=False):
 def task_list(request):
     if request.user.can_supervise:
         return redirect('dashboard')
-    return render(request, 'tasks/list.html', {'tasks': hub_tasks(request.user), 'show_dismiss': True, 'alerts': deadline_alerts(request.user),
+    return render(request, 'tasks/list.html', {'monthly_goals': current_goals(), 'goals_month': timezone.localdate(), 'tasks': hub_tasks(request.user), 'show_dismiss': True, 'alerts': deadline_alerts(request.user),
         'recent_changes': TaskChange.objects.filter(task__in=visible_tasks(request.user)).select_related('task', 'actor')[:20]})
 
 
@@ -175,6 +175,7 @@ def dashboard(request):
     if not request.user.can_supervise:
         raise PermissionDenied
     return render(request, 'tasks/dashboard.html', {
+        'monthly_goals': current_goals(), 'goals_month': timezone.localdate(),
         'alerts': deadline_alerts(request.user),
         'personal_tasks': hub_tasks(request.user, personal=True), 'show_dismiss': True,
         'recent_changes': TaskChange.objects.select_related('task', 'actor')[:20],
@@ -295,3 +296,26 @@ def server_time(request):
     response = JsonResponse({'timestamp': timezone.now().timestamp() * 1000, 'timezone': settings.TIME_ZONE})
     response['Cache-Control'] = 'no-store'
     return response
+
+
+def current_goals():
+    return MonthlyGoal.objects.filter(month=timezone.localdate().replace(day=1)).select_related('created_by').prefetch_related('zones')
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def monthly_goal_create(request):
+    if not request.user.can_supervise:
+        raise PermissionDenied
+    from .forms import MonthlyGoalForm
+    form = MonthlyGoalForm(request.POST if request.method == 'POST' else None,
+                           initial={'month': timezone.localdate().replace(day=1)})
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            goal = form.save(commit=False)
+            goal.created_by = request.user
+            goal.save()
+            form.save_m2m()
+        messages.success(request, 'Meta mensual creada. Se mostrará en el hub de todos durante el mes seleccionado.')
+        return redirect('task-list')
+    return render(request, 'tasks/goal_form.html', {'form': form})

@@ -4,6 +4,7 @@ from accounts.views import register, users_manage, not_found, user_deletion
 from tasks import views
 
 urlpatterns = [
+    path('metas/nueva/', views.monthly_goal_create, name='monthly-goal-create'),
     path('hora-servidor/', views.server_time, name='server-time'),
     path('usuarios/<int:pk>/eliminar/', user_deletion, name='user-delete'),
     path('usuarios/<int:pk>/cancelar-eliminacion/', user_deletion, {'cancel': True}, name='user-delete-cancel'),
