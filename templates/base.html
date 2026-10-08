@@ -11,9 +11,9 @@
 <nav aria-label="Navegación principal">
 {% if user.is_authenticated %}
 <a href="{% url 'task-list' %}">Hub principal</a><a href="{% url 'task-history' %}">Historial</a>
-{% if user.can_supervise %}<a href="{% url 'gantt' %}">Gantt</a><a href="{% url 'tv-dashboard' %}">Dashboard TV</a>{% endif %}
+{% if user.can_supervise %}<a href="{% url 'gantt' %}">Gantt</a><a href="{% url 'tv-dashboard' %}">Dashboard TV</a><a href="{% url 'attendance' %}">Asistencia</a>{% endif %}
 {% if user.is_superuser %}<a href="{% url 'users-manage' %}">Usuarios</a>{% endif %}
-<span class="identity">{{ user.display_name }} · {{ user.role_label }}</span>
+<a class="identity" href="{% url 'profile' %}" title="Editar mi perfil">{{ user.display_name }} · {{ user.role_label }}</a>
 <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="secondary small">Salir</button></form>
 {% else %}<a href="{% url 'login' %}">Iniciar sesión</a><a href="{% url 'register' %}">Crear cuenta</a>{% endif %}
 </nav></header>

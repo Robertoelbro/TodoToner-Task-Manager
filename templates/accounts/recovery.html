@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block content %}
+<section class="login-centered"><div class="panel auth"><h1>{{ heading }}</h1><p>{{ description }}</p>
+<form method="post">{% csrf_token %}{% include 'fields.html' %}<button class="full">{{ button }}</button></form>
+<p><a href="{% url 'recover-password' %}">Solicitar otro código</a></p><a href="{% url 'login' %}">Volver al inicio de sesión</a>
+</div></section>{% endblock %}

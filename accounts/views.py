@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
+from django.views.decorators.debug import sensitive_post_parameters
 from .forms import RegistrationForm
 
 
@@ -46,6 +47,35 @@ def users_manage(request, pk=None):
 
 def not_found(request, exception=None):
     return render(request, '404.html', status=404)
+
+
+@login_required
+@sensitive_post_parameters('current_password')
+@require_http_methods(['GET', 'POST'])
+def profile(request):
+    from .forms import ProfileForm
+    form = ProfileForm(request.POST if request.method == 'POST' else None, instance=request.user)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Perfil actualizado.')
+        return redirect('profile')
+    return render(request, 'accounts/profile.html', {'form': form})
+
+
+@login_required
+@require_http_methods(['GET'])
+def attendance(request):
+    if not request.user.can_supervise:
+        raise Http404
+    from django.utils import timezone
+    # Datos ficticios: no representan presencia real ni se guardan en la BD.
+    people = [
+        {'name': 'Colaborador de ejemplo A', 'zone': 'Ventas', 'status': 'Presente', 'time': '09:00'},
+        {'name': 'Colaborador de ejemplo B', 'zone': 'Postventas', 'status': 'Presente', 'time': '08:55'},
+        {'name': 'Colaborador de ejemplo C', 'zone': 'Bodega', 'status': 'Sin marcación', 'time': '—'},
+        {'name': 'Colaborador de ejemplo D', 'zone': 'Administración', 'status': 'Vacaciones', 'time': '—'},
+    ]
+    return render(request, 'accounts/attendance.html', {'people': people, 'today': timezone.localdate()})
 
 
 from django.db import transaction

@@ -2,9 +2,9 @@
 {% block title %}Hub supervisor · Turno{% endblock %}
 {% block content %}
 
-<div class="page-heading"><div><p class="eyebrow">ESPACIO DE SUPERVISIÓN</p><h1>Hola, {{ user.display_name }}</h1><p class="muted">Tu trabajo y el de todo el equipo, en un solo lugar.</p></div><a class="button" href="{% url 'task-create' %}">+ Nueva tarea</a></div>
+<div class="page-heading"><h1>Hub principal</h1><a class="button" href="{% url 'task-create' %}">+ Nueva tarea</a></div>
 {% include 'tasks/monthly_goals.html' %}
-<div class="hub-layout"><section class="personal-section" aria-labelledby="personal-title"><div class="section-heading"><div><p class="eyebrow">01 / MI ESPACIO</p><h2 id="personal-title">Mis tareas</h2><p class="muted">Tareas que creaste o en las que eres responsable.</p></div><span class="badge">{{ personal_tasks|length }} tareas</span></div>
+<div class="hub-layout"><section class="personal-section" aria-labelledby="personal-title"><div class="section-heading"><div><h2 id="personal-title">Mis tareas</h2><p class="muted">Tareas que creaste o en las que eres responsable.</p></div><span class="badge">{{ personal_tasks|length }} tareas</span></div>
 <div class="task-grid">{% for task in personal_tasks %}{% include 'tasks/card.html' %}{% empty %}<div class="panel empty"><p>Sin tareas personales por ahora.</p></div>{% endfor %}</div></section>
 
 <aside class="hub-side"><div id="deadline-alerts" data-url="{% url 'task-alerts' %}">{% include 'tasks/alerts.html' %}</div>{% include 'tasks/recent_changes.html' %}</aside></div>

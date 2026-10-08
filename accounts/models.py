@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+import uuid
 
 
 class User(AbstractUser):
@@ -30,4 +31,18 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.display_name
+
+
+class RecoveryRequest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    email_key = models.CharField(max_length=64, db_index=True)
+    purpose = models.CharField(max_length=10)
+    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
+    code_hash = models.CharField(max_length=128, blank=True)
+    account_token = models.CharField(max_length=128, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    verified = models.BooleanField(default=False)
+    consumed = models.BooleanField(default=False)
 

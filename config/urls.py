@@ -2,8 +2,15 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 from accounts.views import register, users_manage, not_found, user_deletion
 from tasks import views
+from accounts import views as account_views, recovery
 
 urlpatterns = [
+    path('perfil/', account_views.profile, name='profile'),
+    path('asistencia/', account_views.attendance, name='attendance'),
+    path('recuperar/usuario/', recovery.recovery_start, {'purpose': 'username'}, name='recover-username'),
+    path('recuperar/contrasena/', recovery.recovery_start, name='recover-password'),
+    path('recuperar/codigo/', recovery.recovery_code, name='recovery-code'),
+    path('recuperar/nueva-contrasena/', recovery.recovery_password, name='recovery-password'),
     path('metas/nueva/', views.monthly_goal_create, name='monthly-goal-create'),
     path('hora-servidor/', views.server_time, name='server-time'),
     path('usuarios/<int:pk>/eliminar/', user_deletion, name='user-delete'),

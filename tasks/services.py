@@ -15,6 +15,9 @@ def reassign_task(*, actor, task_id, assignees):
     if not assignees or any(not user.is_active for user in assignees):
         raise ValidationError('Selecciona al menos un responsable activo.')
     task = Task.objects.select_for_update().get(pk=task_id, deleted_at__isnull=True)
+    if (not actor.is_superuser and task.assignees.filter(is_superuser=True).exists()
+            and not task.assignees.filter(is_superuser=False).exists()):
+        raise PermissionDenied('Esta tarea es privada de gerencia.')
     previous = snapshot(task.assignees.all())
     current = snapshot(assignees)
     if previous != current:

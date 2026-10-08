@@ -44,6 +44,15 @@ ni automáticamente al construir previews. Aplicar nuevas migraciones explícita
 del despliegue correspondiente.
 
 ## Publicación y comprobación
+La recuperación de acceso requiere aplicar también `accounts.0005_recoveryrequest`
+en la base de destino con `manage.py migrate` antes de desplegar este cambio.
+Configurar EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend, EMAIL_HOST,
+EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD y DEFAULT_FROM_EMAIL con un remitente
+autorizado por el proveedor. Puerto 587 suele usar EMAIL_USE_TLS=True y EMAIL_USE_SSL=False;
+usar los valores indicados por el proveedor. Guardar credenciales solo como variables privadas.
+Sin SMTP configurado no se entregan correos reales. Validar un envío con una cuenta propia
+antes de habilitar recuperación. No usar el backend de consola en producción.
+
 Subir los cambios al repositorio conectado. En Vercel, usar el framework Django y sus
 comandos predeterminados; desplegar/redeploy después de configurar la base y las variables.
 Probar /login/, estilos/logo, creación de tarea, ocultar del hub, historial y gestión.

@@ -1,7 +1,7 @@
 <article class="panel task-card urgency-{{ task.urgency }}" data-urgency data-start="{{ task.starts_at|date:'c' }}" data-end="{{ task.ends_at|date:'c' }}" data-completed="{% if task.status == 'completed' %}1{% else %}0{% endif %}">
 {% if show_dismiss and task.can_hide %}<form class="task-dismiss" method="post" action="{% url 'task-hide' task.pk %}">{% csrf_token %}<button title="Ocultar de mi hub; conservar en Historial" aria-label="Ocultar {{ task.title }} de mi hub">×</button></form>{% endif %}
 {% if task.deleted_at %}<span class="badge">Eliminada · solo consulta</span>{% endif %}
-<div class="card-top"><span class="badge urgency-label">{{ task.urgency_label }}</span><span class="muted">#{{ task.pk }}</span></div>
+<div class="card-top"><span class="badge urgency-label">{{ task.urgency_label }}</span></div>
 <p><span class="badge">{{ task.get_status_display }}</span> <span class="badge priority-{{ task.priority }}">Prioridad {{ task.get_priority_display }}</span></p>
 <h2><a href="{% url 'task-detail' task.pk %}">{{ task.title }}</a></h2>
 <p class="muted">{{ task.description|truncatechars:120|default:"Sin descripción adicional." }}</p>

@@ -18,8 +18,8 @@ class ScheduleValidationMixin:
         super().__init__(*args, **kwargs)
         for name in ('start_time', 'deadline_time'):
             self.fields[name].required = False
-            self.fields[name].widget = forms.TimeInput(attrs={'type': 'time', 'step': '1'}, format='%H:%M:%S')
-        self.fields['deadline_time'].help_text = 'Hora de Chile. Si se omite, se conserva la hora actual o se usa 23:59:59.'
+            self.fields[name].widget = forms.TimeInput(attrs={'type': 'time', 'step': '60'}, format='%H:%M')
+        self.fields['deadline_time'].help_text = 'Hora de Chile (horas y minutos). Si se omite, se conserva la hora actual o se usa el final del día.'
 
     def clean(self):
         data = super().clean()

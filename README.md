@@ -193,3 +193,31 @@ la creación y guardar sin cambios no se presentan como modificaciones.
 El hub base utiliza la misma distribución de tareas y panel lateral que supervisión,
 conservando sus permisos y su alcance personal. Las tareas borradas definitivamente
 no se pueden recuperar desde este historial.
+
+
+### Perfil, recuperación y privacidad de gerencia
+El nombre y rol del menú abren Mi perfil. Cada cuenta edita únicamente sus nombres,
+apellidos y correo; cambiar el correo exige su contraseña actual. Registro, perfil y
+edición gerencial rechazan correos duplicados sin distinguir mayúsculas. Si ya existen
+cuentas con un mismo correo, corregirlas desde Usuarios: recuperación no selecciona
+arbitrariamente una de ellas.
+
+En login hay pantallas separadas para recuperar usuario por correo y contraseña por
+código de seis dígitos. El código se almacena como hash, caduca a los diez minutos,
+admite cinco intentos y se vincula a la sesión solicitante. Tras verificarlo aparece
+la pantalla de contraseña nueva y confirmación, con los validadores de Django.
+Un cambio de contraseña invalida los códigos pendientes. Se limita a un envío por
+minuto y tres por quince minutos por correo, además del límite por sesión. El mensaje
+público no confirma si existe la cuenta. En local con DEBUG=True el correo aparece en
+la terminal; para entrega real configurar SMTP (ver .env.example y DEPLOY_VERCEL.md).
+
+Las tareas asignadas exclusivamente a responsables de gerencia son privadas para gerencia.
+Las compartidas con usuarios base o supervisores conservan su visibilidad habitual.
+Las privadas se excluyen del hub, alertas, historial, cambios, Gantt y TV de
+usuarios base y supervisores, y tampoco admiten acceso o modificación mediante URL.
+Una tarea creada por gerencia para otros responsables conserva su visibilidad habitual.
+Los números internos no se muestran en las tarjetas, detalle ni tabla del historial.
+
+Asistencia es una demostración reservada a supervisores y gerencia con personas y
+estados ficticios, sin grabar marcaciones ni inferir asistencia de inicios de sesión.
+GeoVictoria sigue pendiente.

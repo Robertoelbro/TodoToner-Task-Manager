@@ -16,6 +16,9 @@ def visible_tasks(user, include_deleted=False):
     queryset = Task.objects.select_related('created_by', 'supervisor').prefetch_related('assignees', 'zones', Prefetch('changes', queryset=TaskChange.objects.exclude(changes={}).select_related('actor'), to_attr='modifications'))
     if not include_deleted:
         queryset = queryset.filter(deleted_at__isnull=True)
+    if not user.is_superuser:
+        private_tasks = Task.objects.filter(assignees__is_superuser=True).exclude(assignees__is_superuser=False)
+        queryset = queryset.exclude(pk__in=private_tasks.values('pk'))
     if user.can_supervise:
         return queryset
     return queryset.filter(Q(assignees=user) | Q(created_by=user)).distinct()
@@ -44,7 +47,7 @@ def task_create(request):
             AssignmentChange.objects.create(task=task, actor=request.user,
                                             new_assignees=snapshot(task.assignees.all()))
         messages.success(request, 'Tarea creada y responsables asignados.')
-        return redirect('task-detail', pk=task.pk)
+        return redirect('task-detail', pk=task.pk) if visible_tasks(request.user).filter(pk=task.pk).exists() else redirect('task-list')
     return render(request, 'tasks/form.html', {'form': form, 'heading': 'Nueva tarea', 'button': 'Crear tarea'})
 
 
@@ -62,12 +65,12 @@ def task_detail(request, pk):
 def task_reassign(request, pk):
     if not request.user.can_supervise:
         raise PermissionDenied
-    task = get_object_or_404(Task, pk=pk, deleted_at__isnull=True)
+    task = get_object_or_404(visible_tasks(request.user), pk=pk)
     form = ReassignmentForm(request.POST if request.method == 'POST' else None, instance=task)
     if request.method == 'POST' and form.is_valid():
         reassign_task(actor=request.user, task_id=task.pk, assignees=form.cleaned_data['assignees'])
         messages.success(request, 'Responsables actualizados.')
-        return redirect('task-detail', pk=task.pk)
+        return redirect('task-detail', pk=task.pk) if visible_tasks(request.user).filter(pk=task.pk).exists() else redirect('task-list')
     return render(request, 'tasks/form.html', {'form': form, 'heading': 'Cambiar responsables',
                   'button': 'Guardar responsables', 'task': task})
 
@@ -83,7 +86,7 @@ def gantt_view(request):
         today = timezone.localdate()
         period_params['month'], period_params['year'] = str(today.month), str(today.year)
     form = DashboardFilterForm(period_params)
-    queryset = Task.objects.filter(deleted_at__isnull=True).select_related('supervisor').prefetch_related('assignees', 'zones').annotate(
+    queryset = visible_tasks(request.user).annotate(
         responsible_count=Count('assignees', distinct=True))
     valid = form.is_valid()
     filters = form.cleaned_data if valid else {}
@@ -149,8 +152,9 @@ def gantt_view(request):
 def task_tracking(request, pk):
     if not request.user.can_supervise:
         raise PermissionDenied
-    task = get_object_or_404(Task, pk=pk, deleted_at__isnull=True)
+    task = get_object_or_404(visible_tasks(request.user), pk=pk)
     task = Task.objects.select_for_update().get(pk=task.pk, deleted_at__isnull=True)
+    get_object_or_404(visible_tasks(request.user), pk=pk)
     before = tracking_snapshot(task)
     form = TaskTrackingForm(request.POST if request.method == 'POST' else None, instance=task)
     if request.method == 'POST' and form.is_valid():
@@ -178,7 +182,7 @@ def dashboard(request):
         'monthly_goals': current_goals(), 'goals_month': timezone.localdate(),
         'alerts': deadline_alerts(request.user),
         'personal_tasks': hub_tasks(request.user, personal=True), 'show_dismiss': True,
-        'recent_changes': TaskChange.objects.select_related('task', 'actor')[:20],
+        'recent_changes': TaskChange.objects.filter(task__in=visible_tasks(request.user)).select_related('task', 'actor')[:20],
     })
 
 
@@ -279,7 +283,9 @@ def task_hide(request, pk):
 def task_delete(request, pk):
     if not request.user.can_supervise:
         raise PermissionDenied
+    get_object_or_404(visible_tasks(request.user, include_deleted=True), pk=pk)
     task = get_object_or_404(Task.objects.select_for_update(), pk=pk)
+    get_object_or_404(visible_tasks(request.user, include_deleted=True), pk=pk)
     if request.method == 'POST':
         if request.POST.get('confirm') != 'yes':
             return render(request, 'tasks/delete.html', {'task': task, 'error': 'Confirma la eliminación.'}, status=400)
