@@ -129,12 +129,28 @@ class TaskPermissionsTests(TestCase):
 
 
 
-    def test_base_cannot_edit_tracking_even_if_assigned(self):
-        for user in [self.base, self.worker]:
+    def test_base_updates_only_status_with_audit(self):
+        for user, status in [(self.base, 'in_progress'), (self.worker, 'completed')]:
             self.client.force_login(user)
             url = reverse('task-tracking', args=[self.task.pk])
-            self.assertEqual(self.client.get(url).status_code, 403)
-            self.assertEqual(self.client.post(url, {'status': 'completed', 'priority': 'high'}).status_code, 403)
+            self.assertEqual(list(self.client.get(url).context['form'].fields), ['status'])
+            self.assertEqual(self.client.post(url, {'status': status, 'priority': 'high',
+                'assignees': [self.other.pk], 'supervisor': self.supervisor.pk, 'deadline': '2099-01-01'}).status_code, 302)
+            self.assertEqual(TaskChange.objects.filter(task=self.task).latest('pk').actor, user)
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.status, Task.Status.COMPLETED)
+        self.assertEqual(self.task.priority, Task.Priority.MEDIUM)
+        self.assertIsNone(self.task.supervisor)
+        self.assertNotEqual(self.task.deadline.year, 2099)
+        self.assertSetEqual(set(self.task.assignees.all()), {self.worker})
+
+    def test_base_status_rejects_other_tasks_and_invalid_status(self):
+        url = reverse('task-tracking', args=[self.task.pk])
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assertEqual(self.client.post(url, {'status': 'completed'}).status_code, 404)
+        self.client.force_login(self.worker)
+        self.assertIn('status', self.client.post(url, {'status': 'invalid'}).context['form'].errors)
         self.task.refresh_from_db()
         self.assertEqual(self.task.status, Task.Status.PENDING)
 

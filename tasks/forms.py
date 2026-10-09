@@ -58,6 +58,12 @@ class ReassignmentForm(AssigneesMixin, forms.ModelForm):
 
 
 
+class TaskStatusForm(forms.ModelForm):
+    class Meta:
+        model = Task
+        fields = ('status',)
+
+
 class TaskTrackingForm(ScheduleValidationMixin, forms.ModelForm):
     class Meta:
         model = Task

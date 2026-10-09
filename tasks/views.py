@@ -150,13 +150,13 @@ def gantt_view(request):
 @require_http_methods(['GET', 'POST'])
 @transaction.atomic
 def task_tracking(request, pk):
-    if not request.user.can_supervise:
-        raise PermissionDenied
     task = get_object_or_404(visible_tasks(request.user), pk=pk)
     task = Task.objects.select_for_update().get(pk=task.pk, deleted_at__isnull=True)
     get_object_or_404(visible_tasks(request.user), pk=pk)
     before = tracking_snapshot(task)
-    form = TaskTrackingForm(request.POST if request.method == 'POST' else None, instance=task)
+    from .forms import TaskStatusForm
+    form_class = TaskTrackingForm if request.user.can_supervise else TaskStatusForm
+    form = form_class(request.POST if request.method == 'POST' else None, instance=task)
     if request.method == 'POST' and form.is_valid():
         with transaction.atomic():
             form.save()
@@ -169,7 +169,7 @@ def task_tracking(request, pk):
         messages.success(request, 'Seguimiento de la tarea actualizado.')
         return redirect('task-detail', pk=task.pk)
     return render(request, 'tasks/form.html', {
-        'form': form, 'heading': 'Actualizar seguimiento', 'button': 'Guardar cambios', 'task': task,
+        'form': form, 'heading': 'Actualizar seguimiento' if request.user.can_supervise else 'Actualizar estado', 'button': 'Guardar cambios', 'task': task,
     })
 
 

@@ -25,7 +25,7 @@ Python 3.12, Django 5.2 LTS, django-environ y psycopg 3.
 Se usa SQLite para desarrollo local; PostgreSQL queda preparado mediante DATABASE_URL.
 La interfaz utiliza templates y CSS responsive local, sin dependencias CDN.
 Bootstrap y HTMX quedan pendientes; el dashboard actual se actualiza al recargar la página.
-Estados disponibles: pendiente, en proceso, en revisión y finalizada. Solo supervisores pueden cambiar estado, prioridad (baja/media/alta) y supervisor a cargo, mediante Actualizar seguimiento en el detalle. Las tareas nuevas comienzan pendientes. El supervisor a cargo es opcional y debe ser un supervisor activo. Las tareas finalizadas no cuentan como fuera de plazo. No se han implementado edición de contenido, eliminación, recuperación de contraseña, verificación de correo ni GeoVictoria.
+Estados disponibles: pendiente, en proceso, en revisión y finalizada. Los usuarios base pueden cambiar el estado de las tareas que crearon o tienen asignadas, mediante Actualizar estado. Solo supervisores y gerencia pueden modificar prioridad, fechas, zonas y supervisor a cargo mediante Actualizar seguimiento. Todos los cambios efectivos conservan autor y detalle en el historial. Las tareas nuevas comienzan pendientes. El supervisor a cargo es opcional y debe ser un supervisor activo. Las tareas finalizadas no cuentan como fuera de plazo. No se han implementado edición de contenido, eliminación, recuperación de contraseña, verificación de correo ni GeoVictoria.
 
 ## Instalación en Windows
 
