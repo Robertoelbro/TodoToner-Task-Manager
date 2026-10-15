@@ -6,7 +6,7 @@
 <div class="gantt-label"><a href="{% url 'task-detail' row.task.pk %}">{{ row.task.title }}</a>
 <small>{% for person in row.task.assignees.all %}{{ person.display_name }}{% if not forloop.last %}, {% endif %}{% endfor %}</small>
 <small>{{ row.task.start_date|date:"d/m/Y" }} {{ row.task.start_time|time:"H:i" }} → {{ row.task.deadline|date:"d/m/Y" }} {{ row.task.deadline_time|time:"H:i" }}</small>
-<span class="mini-status">{{ row.task.get_status_display }} · Prioridad {{ row.task.get_priority_display }}</span>
+<span class="urgency-{{ row.task.urgency }}" data-urgency data-start="{{ row.task.starts_at|date:'c' }}" data-end="{{ row.task.ends_at|date:'c' }}" data-completed="{% if row.task.status == 'completed' %}1{% else %}0{% endif %}"><span class="badge urgency-label">{{ row.task.urgency_label }}</span></span><span class="mini-status">{{ row.task.get_status_display }} · Prioridad {{ row.task.get_priority_display }}</span>
 </div>
 <div class="gantt-track">
 <div class="grid-lines" aria-hidden="true">{% for tick in timeline.ticks %}<span style="width:{{ tick.width }}%"></span>{% endfor %}</div>

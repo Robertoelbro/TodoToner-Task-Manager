@@ -5,6 +5,8 @@
   let controller;
   let sequence = 0;
   async function update(url, push = true) {
+    const focused = content.contains(document.activeElement) ? document.activeElement : null;
+    const focusId = focused?.id;
     const current = ++sequence;
     if (controller) controller.abort();
     controller = new AbortController();
@@ -25,6 +27,10 @@
       const html = await response.text();
       if (current !== sequence) return;
       content.innerHTML = html;
+      if (focused) {
+        const replacement = focusId ? document.getElementById(focusId) : null;
+        (replacement || content.querySelector('.filter-actions button'))?.focus();
+      }
       document.dispatchEvent(new Event("gantt:updated"));
       if (push) history.pushState(null, "", url);
       const hasErrors = content.querySelector(".errorlist, .errors");

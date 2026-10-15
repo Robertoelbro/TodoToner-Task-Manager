@@ -4,9 +4,9 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Turno · Actividades{% endblock %}</title>
 <link rel="icon" type="image/png" href="{% static 'brand/logo.png' %}">
-<link rel="stylesheet" href="{% static 'app.css' %}"><link rel="stylesheet" href="{% static 'server-clock.css' %}"></head>
+<link rel="stylesheet" href="{% static 'app.css' %}"><link rel="stylesheet" href="{% static 'server-clock.css' %}"><link rel="stylesheet" href="{% static 'accessibility.css' %}"></head>
 <body>
-{% include 'server_clock.html' %}
+<a class="skip-link" href="#main-content">Saltar al contenido principal</a>
 <header class="topbar"><a class="brand" href="{% url 'task-list' %}"><img class="brand-logo" src="{% static 'brand/logo.png' %}" alt="Todotoner"> <span>Todotoner</span></a>
 <nav aria-label="Navegación principal">
 {% if user.is_authenticated %}
@@ -16,9 +16,10 @@
 <a class="identity" href="{% url 'profile' %}" title="Editar mi perfil">{{ user.display_name }} · {{ user.role_label }}</a>
 <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="secondary small">Salir</button></form>
 {% else %}<a href="{% url 'login' %}">Iniciar sesión</a><a href="{% url 'register' %}">Crear cuenta</a>{% endif %}
-</nav></header>
-<main class="container">
+</nav>{% include 'server_clock.html' %}</header>
+<main class="container" id="main-content" tabindex="-1">
 {% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}
+{% if user.is_authenticated %}<div class="update-controls"><button type="button" id="pause-updates" class="secondary small" aria-pressed="false">Pausar alertas y plazos automáticos</button></div>{% endif %}
 {% block content %}{% endblock %}
 </main>
 <footer>Turno · Gestión de actividades</footer>

@@ -2,6 +2,6 @@
 <div class="page-heading"><h1>Asistencia de hoy</h1><span>{{ today|date:'d/m/Y' }}</span></div>
 <div class="notice"><strong>Demostración · Datos ficticios.</strong> GeoVictoria aún no está conectado. Estos estados no indican la asistencia real del equipo.</div>
 <div class="task-grid"><div class="panel"><h2>2 presentes</h2><p>De 4 personas de ejemplo</p></div><div class="panel"><h2>1 sin marcación</h2><p>Ejemplo de estado pendiente</p></div><div class="panel"><h2>1 en vacaciones</h2><p>Ejemplo de ausencia programada</p></div></div>
-<div class="history-table-scroll"><table class="history-table"><thead><tr><th>Trabajador</th><th>Zona</th><th>Estado de ejemplo</th><th>Entrada</th></tr></thead><tbody>
+<div class="history-table-scroll" tabindex="0" role="region" aria-label="Tabla de asistencia de demostración"><table class="history-table"><thead><tr><th>Trabajador</th><th>Zona</th><th>Estado de ejemplo</th><th>Entrada</th></tr></thead><tbody>
 {% for person in people %}<tr><td>{{ person.name }}</td><td>{{ person.zone }}</td><td>{{ person.status }}</td><td>{{ person.time }}</td></tr>{% endfor %}
 </tbody></table></div>{% endblock %}
