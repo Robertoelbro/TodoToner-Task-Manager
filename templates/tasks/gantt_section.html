@@ -5,7 +5,7 @@
 <div class="filter-grid">{% for field in filter_form %}<div class="filter-field {% if field.name == 'multiple' %}check-field{% endif %}">
 {% if field.name == 'multiple' %}<label>{{ field }} {{ field.label }}</label>{% else %}<label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}
 {{ field.errors }}</div>{% endfor %}</div>
-<div class="filter-actions"><button>Aplicar filtros</button><a href="{% url 'gantt' %}" id="gantt-clear">Limpiar filtros</a><span class="help">Los filtros se aplican solo al equipo, no a tus tareas personales.</span></div></form>
+<div class="filter-actions"><button>Aplicar filtros</button><a href="{% url 'gantt' %}" id="gantt-clear">Limpiar filtros</a><span class="help">Solo se muestran tareas a las que tienes acceso.</span></div></form>
 <div class="stats"><div class="panel"><span>Tareas únicas</span><strong>{{ task_count }}</strong></div><div class="panel"><span>Responsables involucrados</span><strong>{{ worker_count }}</strong></div><div class="panel"><span>Fuera de plazo</span><strong>{{ overdue_count }}</strong><a class="button danger small" id="gantt-overdue" href="{{ overdue_url }}" aria-pressed="{{ overdue_only|yesno:'true,false' }}">{% if overdue_only %}Ver todas{% else %}Ver fuera de plazo{% endif %}</a></div></div>
 <section class="panel timeline-panel"><div class="section-heading"><h3>{% if overdue_only %}Gantt fuera de plazo{% else %}Gantt general{% endif %}</h3><span class="muted">{{ timeline.start|date:"d M Y" }} — {{ timeline.end|date:"d M Y" }}</span></div>
 <p class="help">Período planificado, con inicio y fecha límite incluidos. {% if timeline.step > 1 %}Columnas de hasta {{ timeline.step }} días.{% else %}Escala diaria.{% endif %} La línea vertical marca hoy.</p>

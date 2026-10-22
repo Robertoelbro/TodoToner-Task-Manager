@@ -10,6 +10,7 @@ from accounts.models import User
 from .forms import ReassignmentForm, TaskForm, TaskTrackingForm, DashboardFilterForm
 from .models import AssignmentChange, Task, Zone, TaskChange, MonthlyGoal
 from .services import reassign_task, snapshot, tracking_snapshot
+from .permissions import involvement, team_access, can_work_task, can_supervise_task
 
 
 def visible_tasks(user, include_deleted=False):
@@ -19,9 +20,12 @@ def visible_tasks(user, include_deleted=False):
     if not user.is_superuser:
         private_tasks = Task.objects.filter(assignees__is_superuser=True).exclude(assignees__is_superuser=False)
         queryset = queryset.exclude(pk__in=private_tasks.values('pk'))
-    if user.can_supervise:
+    if user.is_superuser:
         return queryset
-    return queryset.filter(Q(assignees=user) | Q(created_by=user)).distinct()
+    shared = Q(spectators=user)
+    if user.area_id:
+        shared |= Q(spectator_areas=user.area_id)
+    return queryset.filter(involvement(user) | team_access(user) | shared).distinct()
 
 
 @login_required
@@ -35,12 +39,16 @@ def task_list(request):
 
 @login_required
 @require_http_methods(['GET', 'POST'])
-def task_create(request):
+def task_create(request, parent_pk=None):
+    parent = get_object_or_404(visible_tasks(request.user), pk=parent_pk) if parent_pk else None
+    if parent and not can_work_task(request.user, parent):
+        raise PermissionDenied
     form = TaskForm(request.POST if request.method == 'POST' else None)
     if request.method == 'POST' and form.is_valid():
         with transaction.atomic():
             task = form.save(commit=False)
             task.created_by = request.user
+            task.parent = parent
             task.save()
             form.save_m2m()
             TaskChange.objects.create(task=task, actor=request.user, summary='Tarea creada')
@@ -48,7 +56,7 @@ def task_create(request):
                                             new_assignees=snapshot(task.assignees.all()))
         messages.success(request, 'Tarea creada y responsables asignados.')
         return redirect('task-detail', pk=task.pk) if visible_tasks(request.user).filter(pk=task.pk).exists() else redirect('task-list')
-    return render(request, 'tasks/form.html', {'form': form, 'heading': 'Nueva tarea', 'button': 'Crear tarea'})
+    return render(request, 'tasks/form.html', {'form': form, 'heading': 'Nueva subtarea' if parent else 'Nueva tarea', 'button': 'Crear tarea', 'task': parent})
 
 
 @login_required
@@ -56,6 +64,10 @@ def task_create(request):
 def task_detail(request, pk):
     task = get_object_or_404(visible_tasks(request.user, include_deleted=True), pk=pk)
     return render(request, 'tasks/detail.html', {'task': task,
+                  'can_work': can_work_task(request.user, task),
+                  'can_manage': can_supervise_task(request.user, task),
+                  'subtasks': visible_tasks(request.user).filter(parent=task),
+                  'visible_parent': visible_tasks(request.user).filter(pk=task.parent_id).first() if task.parent_id else None,
                   'changes': task.assignment_changes.select_related('actor'),
                   'task_events': task.changes.select_related('actor')})
 
@@ -66,6 +78,8 @@ def task_reassign(request, pk):
     if not request.user.can_supervise:
         raise PermissionDenied
     task = get_object_or_404(visible_tasks(request.user), pk=pk)
+    if not can_supervise_task(request.user, task):
+        raise PermissionDenied
     form = ReassignmentForm(request.POST if request.method == 'POST' else None, instance=task)
     if request.method == 'POST' and form.is_valid():
         reassign_task(actor=request.user, task_id=task.pk, assignees=form.cleaned_data['assignees'])
@@ -78,8 +92,6 @@ def task_reassign(request, pk):
 @login_required
 @require_http_methods(['GET'])
 def gantt_view(request):
-    if not request.user.can_supervise:
-        raise PermissionDenied
     from .gantt import build_timeline
     period_params = request.GET.copy()
     if not period_params.get('month') and not period_params.get('year'):
@@ -153,9 +165,11 @@ def task_tracking(request, pk):
     task = get_object_or_404(visible_tasks(request.user), pk=pk)
     task = Task.objects.select_for_update().get(pk=task.pk, deleted_at__isnull=True)
     get_object_or_404(visible_tasks(request.user), pk=pk)
+    if not can_work_task(request.user, task):
+        raise PermissionDenied
     before = tracking_snapshot(task)
     from .forms import TaskStatusForm
-    form_class = TaskTrackingForm if request.user.can_supervise else TaskStatusForm
+    form_class = TaskTrackingForm if can_supervise_task(request.user, task) else TaskStatusForm
     form = form_class(request.POST if request.method == 'POST' else None, instance=task)
     if request.method == 'POST' and form.is_valid():
         with transaction.atomic():
@@ -169,7 +183,7 @@ def task_tracking(request, pk):
         messages.success(request, 'Seguimiento de la tarea actualizado.')
         return redirect('task-detail', pk=task.pk)
     return render(request, 'tasks/form.html', {
-        'form': form, 'heading': 'Actualizar seguimiento' if request.user.can_supervise else 'Actualizar estado', 'button': 'Guardar cambios', 'task': task,
+        'form': form, 'heading': 'Actualizar seguimiento' if can_supervise_task(request.user, task) else 'Actualizar estado', 'button': 'Guardar cambios', 'task': task,
     })
 
 
@@ -286,6 +300,8 @@ def task_delete(request, pk):
     get_object_or_404(visible_tasks(request.user, include_deleted=True), pk=pk)
     task = get_object_or_404(Task.objects.select_for_update(), pk=pk)
     get_object_or_404(visible_tasks(request.user, include_deleted=True), pk=pk)
+    if not can_supervise_task(request.user, task):
+        raise PermissionDenied
     if request.method == 'POST':
         if request.POST.get('confirm') != 'yes':
             return render(request, 'tasks/delete.html', {'task': task, 'error': 'Confirma la eliminación.'}, status=400)
@@ -325,3 +341,32 @@ def monthly_goal_create(request):
         messages.success(request, 'Meta mensual creada. Se mostrará en el hub de todos durante el mes seleccionado.')
         return redirect('task-list')
     return render(request, 'tasks/goal_form.html', {'form': form})
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def task_audience(request, pk):
+    from .forms import TaskAudienceForm
+    get_object_or_404(visible_tasks(request.user), pk=pk)
+    task = get_object_or_404(Task.objects.select_for_update(), pk=pk, deleted_at__isnull=True)
+    get_object_or_404(visible_tasks(request.user), pk=pk)
+    if not can_work_task(request.user, task):
+        raise PermissionDenied
+    form = TaskAudienceForm(request.POST if request.method == 'POST' else None, instance=task)
+    before_label = audience_label(task)
+    before = (list(task.spectators.order_by('pk').values_list('pk', flat=True)),
+              list(task.spectator_areas.order_by('pk').values_list('pk', flat=True)))
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        after = (list(task.spectators.order_by('pk').values_list('pk', flat=True)),
+                 list(task.spectator_areas.order_by('pk').values_list('pk', flat=True)))
+        if before != after:
+            TaskChange.objects.create(task=task, actor=request.user, summary='Espectadores actualizados',
+                changes={'Visibilidad': {'before': before_label, 'after': audience_label(task)}})
+        return redirect('task-detail', pk=task.pk)
+    return render(request, 'tasks/form.html', {'form': form, 'heading': 'Quién puede ver esta tarea', 'button': 'Guardar espectadores', 'task': task})
+
+
+def audience_label(task):
+    return 'Personas: ' + (', '.join(str(u) for u in task.spectators.order_by('pk')) or 'Ninguna') + '; áreas: ' + (', '.join(str(a) for a in task.spectator_areas.order_by('pk')) or 'Ninguna')

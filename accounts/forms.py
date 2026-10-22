@@ -28,11 +28,81 @@ class RegistrationForm(UniqueEmailMixin, UserCreationForm):
 
 
 class ManagedUserForm(UniqueEmailMixin, forms.ModelForm):
+    role = forms.ChoiceField(label='Rol', choices=[('base', 'Usuario base'), ('supervisor', 'Supervisor'), ('management', 'Gerencia')])
     email = forms.EmailField(label='Correo electrónico', required=False)
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'email', 'is_supervisor')
+        fields = ('first_name', 'last_name', 'email', 'area')
         labels = {'is_supervisor': 'Puede supervisar y reasignar tareas'}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].required = True
+        self.fields['role'].initial = 'management' if self.instance.is_superuser else ('supervisor' if self.instance.is_supervisor else 'base')
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.is_superuser = self.cleaned_data['role'] == 'management'
+        user.is_supervisor = self.cleaned_data['role'] == 'supervisor'
+        user.is_staff = user.is_superuser
+        if commit:
+            user.save()
+        return user
+
+
+class ManagedCreationForm(forms.ModelForm):
+    first_name = forms.CharField(label='Nombre', max_length=150)
+    last_name = forms.CharField(label='Apellido', max_length=150)
+    temporary_password = forms.CharField(label='Contraseña temporal', required=False, strip=False,
+        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
+        help_text='Déjala vacía para generar una contraseña segura automáticamente.')
+
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'area')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['area'].required = True
+
+    def clean(self):
+        from django.contrib.auth.password_validation import validate_password
+        data = super().clean()
+        if data.get('temporary_password'):
+            candidate = User(first_name=data.get('first_name', ''), last_name=data.get('last_name', ''))
+            try:
+                validate_password(data['temporary_password'], candidate)
+            except forms.ValidationError as error:
+                self.add_error('temporary_password', error)
+        return data
+
+
+from django.contrib.auth.forms import SetPasswordForm
+
+
+class CompleteProfileForm(SetPasswordForm):
+    field_order = ('email', 'new_password1', 'new_password2')
+    email = forms.EmailField(label='Correo electrónico', widget=forms.EmailInput(attrs={'autocomplete': 'email'}))
+
+    def clean_email(self):
+        email = self.cleaned_data['email'].strip().lower()
+        if User.objects.filter(email__iexact=email).exclude(pk=self.user.pk).exists():
+            raise forms.ValidationError('Este correo ya está asociado a otra cuenta.')
+        return email
+
+    def clean_new_password1(self):
+        password = self.cleaned_data['new_password1']
+        if self.user.check_password(password):
+            raise forms.ValidationError('Elige una contraseña distinta de la temporal.')
+        return password
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.email = self.cleaned_data['email']
+        user.must_complete_profile = False
+        if commit:
+            user.save()
+        return user
 
 
 class DeletionConfirmationForm(forms.Form):

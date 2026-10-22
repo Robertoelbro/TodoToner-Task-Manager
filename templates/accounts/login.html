@@ -6,6 +6,6 @@
 <form method="post">{% csrf_token %}{% include 'fields.html' %}
 {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
 <button class="full">Entrar</button></form>
-<p><a href="{% url 'recover-username' %}">¿Olvidaste tu usuario?</a></p><p><a href="{% url 'recover-password' %}">¿Olvidaste tu contraseña?</a></p><p class="auth-link">¿Primera vez? <a href="{% url 'register' %}">Crear una cuenta</a></p>
+<p><a href="{% url 'recover-username' %}">¿Olvidaste tu usuario?</a></p><p><a href="{% url 'recover-password' %}">¿Olvidaste tu contraseña?</a></p><p class="help">Las cuentas son creadas por gerencia. Solicita tus datos de acceso a tu responsable.</p>
 </div></section>{% endblock %}
 

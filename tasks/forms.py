@@ -7,10 +7,28 @@ from .models import Task, Zone
 class AssigneesMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['assignees'].queryset = User.objects.filter(is_active=True).order_by('first_name', 'username')
+        self.fields['assignees'].queryset = User.objects.filter(is_active=True, deleted_at__isnull=True, deletion_due_at__isnull=True).order_by('first_name', 'username')
         self.fields['assignees'].widget = forms.CheckboxSelectMultiple()
         self.fields['assignees'].widget.choices = self.fields['assignees'].choices
         self.fields['assignees'].help_text = 'Selecciona una o más personas.'
+        self.fields['assignees'].required = False
+        self.fields['assignee_areas'] = forms.ModelMultipleChoiceField(label='Asignar a toda un área',
+            queryset=Zone.objects.all(), required=False, widget=forms.CheckboxSelectMultiple,
+            help_text='Se añadirán los usuarios activos que pertenezcan al área al guardar.')
+
+    def clean(self):
+        data = super().clean()
+        people = data.get('assignees')
+        areas = data.get('assignee_areas')
+        if people is not None:
+            ids = set(people.values_list('pk', flat=True))
+            if areas:
+                ids.update(User.objects.filter(is_active=True, deleted_at__isnull=True,
+                    deletion_due_at__isnull=True, area__in=areas).values_list('pk', flat=True))
+            data['assignees'] = self.fields['assignees'].queryset.filter(pk__in=ids)
+            if not ids:
+                self.add_error('assignees', 'Selecciona al menos un responsable o un área con usuarios activos.')
+        return data
 
 
 class ScheduleValidationMixin:
@@ -33,10 +51,29 @@ class ScheduleValidationMixin:
         return data
 
 
-class TaskForm(ScheduleValidationMixin, AssigneesMixin, forms.ModelForm):
+class AudienceMixin:
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['spectators'].queryset = User.objects.filter(is_active=True, deleted_at__isnull=True,
+            deletion_due_at__isnull=True).order_by('first_name', 'last_name', 'username')
+        self.fields['spectators'].widget = forms.CheckboxSelectMultiple()
+        self.fields['spectators'].widget.choices = self.fields['spectators'].choices
+        self.fields['spectator_areas'].widget = forms.CheckboxSelectMultiple()
+        self.fields['spectator_areas'].widget.choices = self.fields['spectator_areas'].choices
+        self.fields['spectator_areas'].help_text = 'Acceso de lectura para los miembros actuales de estas áreas. Si cambian de área, cambia su acceso.'
+        self.fields['spectators'].help_text = 'Solo lectura. Las tareas exclusivas de gerencia siguen siendo privadas para gerencia.'
+
+
+class TaskAudienceForm(AudienceMixin, forms.ModelForm):
     class Meta:
         model = Task
-        fields = ('title', 'description', 'start_date', 'start_time', 'deadline', 'deadline_time', 'zones', 'priority', 'supervisor', 'assignees')
+        fields = ('spectators', 'spectator_areas')
+
+
+class TaskForm(ScheduleValidationMixin, AssigneesMixin, AudienceMixin, forms.ModelForm):
+    class Meta:
+        model = Task
+        fields = ('title', 'description', 'start_date', 'start_time', 'deadline', 'deadline_time', 'zones', 'priority', 'supervisor', 'assignees', 'spectators', 'spectator_areas')
         widgets = {
             'zones': forms.CheckboxSelectMultiple(),
             'start_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),

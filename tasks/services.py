@@ -15,6 +15,9 @@ def reassign_task(*, actor, task_id, assignees):
     if not assignees or any(not user.is_active for user in assignees):
         raise ValidationError('Selecciona al menos un responsable activo.')
     task = Task.objects.select_for_update().get(pk=task_id, deleted_at__isnull=True)
+    from .permissions import can_supervise_task
+    if not can_supervise_task(actor, task):
+        raise PermissionDenied
     if (not actor.is_superuser and task.assignees.filter(is_superuser=True).exists()
             and not task.assignees.filter(is_superuser=False).exists()):
         raise PermissionDenied('Esta tarea es privada de gerencia.')

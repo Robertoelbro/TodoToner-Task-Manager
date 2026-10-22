@@ -3,8 +3,13 @@ from django.urls import path
 from accounts.views import register, users_manage, not_found, user_deletion
 from tasks import views
 from accounts import views as account_views, recovery
+from accounts.onboarding import AccountAuthenticationForm
 
 urlpatterns = [
+    path('primer-ingreso/', account_views.complete_profile, name='complete-profile'),
+    path('usuarios/nuevo/', account_views.user_create, name='user-create'),
+    path('tareas/<int:parent_pk>/subtareas/nueva/', views.task_create, name='subtask-create'),
+    path('tareas/<int:pk>/espectadores/', views.task_audience, name='task-audience'),
     path('perfil/', account_views.profile, name='profile'),
     path('asistencia/', account_views.attendance, name='attendance'),
     path('recuperar/usuario/', recovery.recovery_start, {'purpose': 'username'}, name='recover-username'),
@@ -17,7 +22,7 @@ urlpatterns = [
     path('usuarios/<int:pk>/cancelar-eliminacion/', user_deletion, {'cancel': True}, name='user-delete-cancel'),
     path('usuarios/', users_manage, name='users-manage'),
     path('usuarios/<int:pk>/', users_manage, name='user-edit'),
-    path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html'), name='login'),
+    path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html', authentication_form=AccountAuthenticationForm), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('registro/', register, name='register'),
     path('', views.task_list, name='task-list'),

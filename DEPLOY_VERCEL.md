@@ -61,3 +61,8 @@ ficticios para esta demo y preparar cuentas de prueba. La base remota es indepen
 
 Vercel Hobby está limitado a uso personal no comercial; usar un plan apropiado para la empresa.
 Documentación: https://vercel.com/docs/frameworks/full-stack/django
+
+
+## Actualización de áreas, espectadores y primer ingreso
+
+Antes de habilitar esta versión, ejecutar `python manage.py migrate` con la conexión PostgreSQL del entorno destino. Incluye `tasks.0011`, `tasks.0012` y `accounts.0006`; subir código sin migrar provoca errores por columnas o tablas faltantes. Respaldar la base antes. Tras actualizar, gerencia debe asignar áreas a las cuentas existentes; no se infieren desde las zonas de tareas. No se fuerza cambio de contraseña a cuentas anteriores. La creación de nuevas cuentas pasa a Usuarios y desaparece el registro público.

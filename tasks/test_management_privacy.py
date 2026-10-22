@@ -2,15 +2,15 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from accounts.models import User
-from .models import Task, TaskChange
+from .models import Task, TaskChange, Zone
 
 
 @override_settings(SECURE_SSL_REDIRECT=False)
 class ManagementPrivacyTests(TestCase):
     def setUp(self):
         self.manager = User.objects.create_user('manager', is_superuser=True)
-        self.supervisor = User.objects.create_user('supervisor', is_supervisor=True)
-        self.base = User.objects.create_user('base')
+        self.supervisor = User.objects.create_user('supervisor', is_supervisor=True, area=Zone.objects.get(code='bodega'))
+        self.base = User.objects.create_user('base', area=Zone.objects.get(code='bodega'))
         self.task = Task.objects.create(title='CONFIDENCIAL_GERENCIA', created_by=self.base, deadline=timezone.localdate())
         self.task.assignees.add(self.manager)
         TaskChange.objects.create(task=self.task, actor=self.manager, summary='Cambio privado')

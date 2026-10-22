@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<section class="panel form-panel"><h1>Completa tu primer ingreso</h1><p>Registra tu correo y reemplaza la contraseña temporal para acceder al sistema.</p><form method="post">{% csrf_token %}{% include 'fields.html' %}<button>Completar cuenta</button></form></section>{% endblock %}

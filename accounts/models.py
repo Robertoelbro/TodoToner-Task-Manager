@@ -4,6 +4,9 @@ import uuid
 
 
 class User(AbstractUser):
+    area = models.ForeignKey('tasks.Zone', null=True, blank=True, on_delete=models.PROTECT,
+                             related_name='members', verbose_name='Área')
+    must_complete_profile = models.BooleanField(default=False)
     deletion_due_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     deletion_was_active = models.BooleanField(default=True)

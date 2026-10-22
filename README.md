@@ -4,17 +4,17 @@ Aplicación web responsive para asignar tareas a trabajadores y consultar sus fe
 
 ## Implementado
 
-- Registro, inicio y cierre de sesión con autenticación de Django.
+- Alta de cuentas por gerencia, primer ingreso obligatorio, inicio y cierre de sesión con Django.
 - Usuario propio desde la primera migración, con casilla booleana `is_supervisor`.
 - Usuario base: crea tareas y las asigna inicialmente a una o más personas activas. Consulta las que creó y las que tiene asignadas.
-- Supervisor: conserva las funciones base, ve las tareas de todos los usuarios y puede cambiar sus responsables.
+- Supervisor: conserva las funciones base, ve las tareas de su equipo (área), las propias y las compartidas. Solo puede gestionar las propias o de su equipo; ser espectador no concede edición.
 - Solo el supervisor puede reasignar, incluso si el creador de la tarea es un usuario base.
 - Historial de asignaciones con actor, fecha, responsables anteriores y nuevos.
 - Dashboard por trabajador, incluidos usuarios sin tareas e inactivos identificados.
 - Prioridad, estado y supervisor visibles en tarjetas y detalle.
 - Tareas anteriores migradas con prioridad media, estado pendiente y supervisor sin asignar.
 - Fecha límite inclusiva: vence al terminar el día indicado, en America/Santiago.
-- Registro público siempre crea usuarios base. No permite otorgarse privilegios.
+- Registro público cerrado. Gerencia crea usuarios base y puede promoverlos a supervisor o gerencia.
 - Gerencia utiliza el superusuario de Django y gestiona usuarios desde una vista propia. GeoVictoria queda pendiente.
 
 Supervisor y gerencia son roles distintos. Gerencia gestiona cuentas y puede supervisar tareas.
@@ -46,7 +46,7 @@ En el equipo original el entorno y .env ya están creados, con una clave aleator
 .\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
-Abrir http://127.0.0.1:8000 y utilizar Crear cuenta.
+Abrir http://127.0.0.1:8000. Gerencia crea las cuentas desde Usuarios → Crear usuario.
 El login utiliza el nombre de usuario, no el correo.
 El servidor de desarrollo se detiene con Ctrl+C y no debe utilizarse en producción.
 
@@ -66,7 +66,7 @@ Gerencia corresponde a is_superuser de Django y también puede supervisar tareas
 .\.venv\Scripts\python.exe manage.py createsuperuser
 ```
 
-Iniciar sesión en /login/ y abrir el menú Usuarios (/usuarios/). Gerencia puede editar nombre, apellido, correo y activar/desactivar el permiso de supervisor de las demás cuentas no gerenciales. Esta vista no cambia contraseñas, superusuarios ni permisos técnicos; ningún usuario puede ascenderse desde el registro.
+Iniciar sesión en /login/ y abrir Usuarios (/usuarios/). Gerencia crea cuentas y edita nombre, apellido, correo, área y rol de las cuentas no gerenciales. Puede promoverlas a supervisor o gerencia. Las cuentas gerenciales quedan protegidas contra edición y eliminación desde esta vista. El perfil personal no permite cambiar área ni privilegios.
 
 Django Admin está deshabilitado: no existe la ruta /admin/. Las rutas inexistentes y los intentos sin permiso de acceder a gestión muestran un 404 personalizado sin listar rutas, incluso con DEBUG=True. DEBUG=False sigue siendo necesario en producción para evitar otras páginas técnicas de error.
 
@@ -81,7 +81,7 @@ Las cuentas anteriormente marcadas is_management se convierten a superusuarios m
 - Para PostgreSQL: configurar DATABASE_URL con los datos reales y ejecutar migrate. El servidor y la base deben existir previamente. Cambiar la URL no transfiere los datos de SQLite.
 - Con DEBUG=False se exigen cookies seguras y redirección HTTPS. El despliegue requiere configurar servidor HTTPS, archivos estáticos, respaldos y red con TI.
 
-El registro actual es abierto para quien alcance la aplicación. Antes de habilitar acceso empresarial se debe acordar si será por invitación/aprobación, configurar límites de intentos de login y completar el despliegue de producción.
+El registro público está cerrado; solo gerencia da de alta usuarios.
 
 ## Verificación
 
@@ -221,3 +221,17 @@ Los números internos no se muestran en las tarjetas, detalle ni tabla del histo
 Asistencia es una demostración reservada a supervisores y gerencia con personas y
 estados ficticios, sin grabar marcaciones ni inferir asistencia de inicios de sesión.
 GeoVictoria sigue pendiente.
+
+## Áreas, espectadores, subtareas y primer ingreso (octubre 2026)
+
+- Cada cuenta nueva requiere un área: Ventas, Administración, Postventas, Storage o Bodega. Son cinco áreas independientes. La migración 0013 separa Bodega de Storage, conservando las asignaciones existentes de Storage.
+- Las cuentas existentes mantienen sus datos y no se fuerzan a cambiar contraseña. Gerencia debe asignarles área desde Usuarios. Un supervisor sin área solo accede a las tareas en las que participa explícitamente o es espectador; no obtiene acceso general.
+- El equipo se determina por el área de los responsables, no por las zonas de la tarea. Gerencia conserva acceso general. Las tareas asignadas exclusivamente a gerencia siguen ocultas para otros roles.
+- Usuarios base consultan Mi Gantt con las tareas accesibles. Espectadores individuales o por área tienen acceso de lectura; la pertenencia actual al área determina el acceso. Crear una tarea o ser responsable permite elegir espectadores. El autor, responsables, supervisor a cargo y supervisión del equipo mantienen su acceso.
+- Asignar a toda un área incorpora los miembros activos al guardar; futuros integrantes no se asignan automáticamente. La búsqueda por nombre conserva selecciones aunque se filtre la lista.
+- Las subtareas tienen responsables y espectadores independientes. Ver una subtarea no concede acceso a su tarea principal ni viceversa. Eliminar la principal conserva sus subtareas como tareas independientes.
+- Gerencia entrega el usuario generado y una contraseña temporal, visible solo en la respuesta de creación. Se almacena únicamente su hash. En el primer ingreso se exige correo único y contraseña nueva distinta de la temporal antes de acceder al sistema.
+- Las cuentas desactivadas o pendientes de eliminación no pueden iniciar sesión ni reactivarse. Al ingresar credenciales correctas se muestra Cuenta desactivada. La cancelación de eliminación permanece reservada a gerencia.
+- Los cambios de espectadores quedan en el historial con actor y valores anteriores/nuevos.
+
+Aplicar `python manage.py migrate` antes de iniciar esta versión. Incluye tareas 0011/0012 y cuentas 0006. No requiere nuevas dependencias.

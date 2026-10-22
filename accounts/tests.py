@@ -5,19 +5,10 @@ from .models import User
 
 @override_settings(SECURE_SSL_REDIRECT=False)
 class AccountTests(TestCase):
-    def test_registration_ignores_privileges_and_hashes_password(self):
-        response = self.client.post(reverse('register'), {
-            'username': 'ana', 'first_name': 'Ana', 'last_name': 'Pérez',
-            'email': 'ana@example.com', 'password1': 'Test-pass-9417!',
-            'password2': 'Test-pass-9417!', 'is_supervisor': 'on',
-            'is_management': 'on', 'is_staff': 'on', 'is_superuser': 'on',
-        })
-        self.assertRedirects(response, reverse('login'))
-        user = User.objects.get(username='ana')
-        self.assertFalse(user.is_supervisor)
-        self.assertFalse(user.is_staff)
-        self.assertFalse(user.is_superuser)
-        self.assertTrue(user.check_password('Test-pass-9417!'))
+    def test_public_registration_closed(self):
+        response = self.client.post(reverse('register'), {'username': 'ana', 'is_superuser': 'on'})
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(User.objects.exists())
 
     def test_login_logout_and_inactive_account(self):
         user = User.objects.create_user(username='ana', password='Test-pass-9417!')
@@ -33,17 +24,6 @@ class AccountTests(TestCase):
         user.save()
         self.assertFalse(self.client.login(username='ana', password='Test-pass-9417!'))
 
-    def test_duplicate_username_and_invalid_password(self):
-        User.objects.create_user(username='ana', password='Test-pass-9417!')
-        response = self.client.post(reverse('register'), {
-            'username': 'ana', 'first_name': 'Ana', 'last_name': 'Pérez',
-            'email': 'ana@example.com', 'password1': '123', 'password2': '123',
-        })
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('username', response.context['form'].errors)
-        self.assertIn('password2', response.context['form'].errors)
-        self.assertEqual(User.objects.count(), 1)
-
     def test_external_login_redirect_rejected(self):
         User.objects.create_user(username='ana', password='Test-pass-9417!')
         response = self.client.post(reverse('login'), {
@@ -55,6 +35,8 @@ class AccountTests(TestCase):
 @override_settings(SECURE_SSL_REDIRECT=False)
 class ManagementTests(TestCase):
     def setUp(self):
+        from tasks.models import Zone
+        self.area = Zone.objects.get(code='ventas')
         self.boss = User.objects.create_superuser(username='boss', password='Test-pass-9417!')
         self.worker = User.objects.create_user(username='roberto', first_name='Roberto', last_name='Pérez')
         self.supervisor = User.objects.create_user(username='sup', is_supervisor=True)
@@ -84,7 +66,7 @@ class ManagementTests(TestCase):
         self.client.force_login(self.boss)
         response = self.client.post(reverse('user-edit', args=[self.worker.pk]), {
             'first_name':'Roberto', 'last_name':'Pérez', 'email':'roberto@example.com',
-            'is_supervisor':'on', 'is_superuser':'on', 'is_staff':'on', 'password':'tampered',
+            'role':'supervisor', 'area': self.area.pk, 'is_superuser':'on', 'is_staff':'on', 'password':'tampered',
         })
         self.assertRedirects(response, reverse('users-manage'))
         self.worker.refresh_from_db()
@@ -95,7 +77,7 @@ class ManagementTests(TestCase):
 
     def test_management_can_remove_supervision_but_not_edit_management(self):
         self.client.force_login(self.boss)
-        self.client.post(reverse('user-edit', args=[self.supervisor.pk]), {'first_name':'Laura','last_name':'Soto','email':''})
+        self.client.post(reverse('user-edit', args=[self.supervisor.pk]), {'first_name':'Laura','last_name':'Soto','email':'', 'role':'base', 'area': self.area.pk})
         self.supervisor.refresh_from_db()
         self.assertFalse(self.supervisor.is_supervisor)
         self.assertEqual(self.client.post(reverse('user-edit', args=[self.boss.pk]), {}).status_code, 404)

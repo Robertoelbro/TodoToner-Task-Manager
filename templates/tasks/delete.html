@@ -1,5 +1,5 @@
 {% extends 'base.html' %}{% load static %}{% block content %}
-<section class="panel"><h1>Eliminar tarea</h1><p>¿Quieres eliminar «{{ task.title }}» definitivamente de la base de datos?</p><p>Esta acción no se puede deshacer. Se borrarán la tarea, sus asignaciones y sus registros de cambios. Tampoco aparecerá en el historial. Los usuarios y las zonas se conservarán.</p>
+<section class="panel"><h1>Eliminar tarea</h1><p>¿Quieres eliminar «{{ task.title }}» definitivamente de la base de datos?</p><p>Esta acción no se puede deshacer. Se borrarán la tarea, sus asignaciones y sus registros de cambios. Tampoco aparecerá en el historial. Los usuarios y las zonas se conservarán. Las subtareas se conservarán como tareas independientes.</p>
 {% if error %}<p role="alert">{{ error }}</p>{% endif %}
 <form method="post" data-delete-confirmation>{% csrf_token %}<button class="danger" type="submit" name="confirm" value="yes" disabled data-delete-button>Confirmar eliminación (5 s)</button> <a href="{% url 'task-detail' task.pk %}">Cancelar</a></form></section>
 <script src="{% static 'delete-confirmation.js' %}" defer></script>

@@ -1,4 +1,4 @@
 <section class="monthly-goals" aria-labelledby="goals-title">
-<div class="section-heading"><div><p class="eyebrow">OBJETIVOS DEL EQUIPO</p><h2 id="goals-title">Hitos y metas · {{ goals_month|date:"F Y" }}</h2></div>{% if user.can_supervise %}<a class="button" href="{% url 'monthly-goal-create' %}">+ Crear meta mensual</a>{% endif %}</div>
+<div class="section-heading"><div><p class="eyebrow">OBJETIVOS DEL EQUIPO</p><h2 id="goals-title">Meta de {{ goals_month|date:"F" }}</h2></div>{% if user.can_supervise %}<a class="button" href="{% url 'monthly-goal-create' %}">+ Crear meta mensual</a>{% endif %}</div>
 <div class="goals-grid">{% for goal in monthly_goals %}<article class="goal-card"><h3>{{ goal.title }}</h3>{% if goal.description %}<div class="goal-description">{{ goal.description|linebreaksbr }}</div>{% endif %}<div class="people">{% for zone in goal.zones.all %}<span>{{ zone.name }}</span>{% endfor %}</div><p class="help">Creada por: {{ goal.created_by.display_name }}</p></article>{% empty %}<p class="muted">Todavía no hay metas para este mes.</p>{% endfor %}</div>
 </section>

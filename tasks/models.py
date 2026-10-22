@@ -16,6 +16,12 @@ class Zone(models.Model):
 
 
 class Task(models.Model):
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL,
+                               related_name='subtasks', verbose_name='Tarea principal')
+    spectators = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True,
+        related_name='watched_tasks', verbose_name='Espectadores')
+    spectator_areas = models.ManyToManyField(Zone, blank=True,
+        related_name='watched_tasks', verbose_name='Áreas espectadoras')
     class Priority(models.TextChoices):
         LOW = 'low', 'Baja'
         MEDIUM = 'medium', 'Media'
