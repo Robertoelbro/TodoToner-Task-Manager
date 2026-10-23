@@ -132,6 +132,8 @@ class ManagedOnboardingTests(TestCase):
         self.assertNotIn('_auth_user_id',self.client.session)
 
     def test_management_promotion_and_live_name_search(self):
+        self.worker.must_complete_profile=False
+        self.worker.save()
         self.client.force_login(self.manager)
         response=self.client.post(reverse('user-edit',args=[self.worker.pk]),{'first_name':'Robin','last_name':'Perez','email':'','area':self.area.pk,'role':'management'})
         self.assertEqual(response.status_code,302)

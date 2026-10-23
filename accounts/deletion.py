@@ -37,7 +37,8 @@ def schedule_deletion(*, actor, target_id):
     target.deletion_requested_by = actor
     target.deletion_due_at = after_business_days(timezone.now())
     target.is_active = False
-    target.save(update_fields=['deletion_was_active', 'deletion_requested_by', 'deletion_due_at', 'is_active'])
+    target.onboarding_nonce = ''
+    target.save(update_fields=['deletion_was_active', 'deletion_requested_by', 'deletion_due_at', 'is_active', 'onboarding_nonce'])
     return target
 
 

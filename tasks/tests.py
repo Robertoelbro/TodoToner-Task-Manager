@@ -347,17 +347,17 @@ class UrgencyTests(TestCase):
         return Task(title='Temporal', start_date=self.start.date(), start_time=self.start.time(),
                     deadline=end.date(), deadline_time=end.time())
 
-    def test_nine_hour_task_uses_thirds(self):
+    def test_nine_hour_task_warns_after_75_percent(self):
         task = self.task_for_hours(9)
-        for hours, expected in [(0, 'green'), (2.99, 'green'), (3, 'yellow'),
-                                (5.99, 'yellow'), (6, 'red'), (8.99, 'red'), (9, 'overdue')]:
+        for hours, expected in [(0, 'green'), (6.74, 'green'), (6.75, 'yellow'),
+                                (8.99, 'yellow'), (9, 'overdue')]:
             self.assertEqual(task.urgency_at(self.start + timedelta(hours=hours)), expected)
 
     def test_long_task_exact_thresholds(self):
         task = self.task_for_hours(96)
         end = task.ends_at
-        for hours, expected in [(49, 'green'), (48, 'yellow'), (24, 'yellow'),
-                                (23.99, 'red'), (0, 'overdue'), (-1, 'overdue')]:
+        for hours, expected in [(49, 'green'), (48, 'green'), (24.01, 'green'), (24, 'yellow'),
+                                (23.99, 'yellow'), (0, 'overdue'), (-1, 'overdue')]:
             self.assertEqual(task.urgency_at(end - timedelta(hours=hours)), expected)
 
     def test_completed_and_not_started(self):
@@ -368,8 +368,9 @@ class UrgencyTests(TestCase):
 
     def test_twenty_four_hour_task_is_short(self):
         task = self.task_for_hours(24)
-        self.assertEqual(task.urgency_at(self.start + timedelta(hours=8)), 'yellow')
-        self.assertEqual(task.urgency_at(self.start + timedelta(hours=16)), 'red')
+        self.assertEqual(task.urgency_at(self.start + timedelta(hours=8)), 'green')
+        self.assertEqual(task.urgency_at(self.start + timedelta(hours=16)), 'green')
+        self.assertEqual(task.urgency_at(self.start + timedelta(hours=18)), 'yellow')
 
     def test_alert_visibility_and_completed_exclusion(self):
         owner = User.objects.create_user(username='alert-owner', area=Zone.objects.get(code='bodega'))

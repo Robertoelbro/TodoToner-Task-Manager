@@ -82,13 +82,7 @@ class Task(models.Model):
         duration = (end - start).total_seconds()
         if remaining <= 0:
             return 'overdue'
-        if 0 < duration <= 86400:
-            if remaining > duration * 2 / 3:
-                return 'green'
-            return 'yellow' if remaining > duration / 3 else 'red'
-        if remaining < 86400:
-            return 'red'
-        return 'yellow' if remaining <= 172800 else 'green'
+        return 'yellow' if duration > 0 and remaining <= duration * .25 else 'green'
 
     @property
     def urgency(self):

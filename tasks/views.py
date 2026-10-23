@@ -33,7 +33,7 @@ def visible_tasks(user, include_deleted=False):
 def task_list(request):
     if request.user.can_supervise:
         return redirect('dashboard')
-    return render(request, 'tasks/list.html', {'monthly_goals': current_goals(), 'goals_month': timezone.localdate(), 'tasks': hub_tasks(request.user), 'show_dismiss': True, 'alerts': deadline_alerts(request.user),
+    return render(request, 'tasks/list.html', {'hub_zones': Zone.objects.all(), 'hub_items': hub_tasks(request.user), 'monthly_goals': current_goals(), 'goals_month': timezone.localdate(), 'tasks': hub_tasks(request.user), 'show_dismiss': True, 'alerts': deadline_alerts(request.user),
         'recent_changes': TaskChange.objects.filter(task__in=visible_tasks(request.user)).select_related('task', 'actor')[:20]})
 
 
@@ -193,6 +193,7 @@ def dashboard(request):
     if not request.user.can_supervise:
         raise PermissionDenied
     return render(request, 'tasks/dashboard.html', {
+        'hub_zones': Zone.objects.all(), 'hub_items': hub_tasks(request.user),
         'monthly_goals': current_goals(), 'goals_month': timezone.localdate(),
         'alerts': deadline_alerts(request.user),
         'personal_tasks': hub_tasks(request.user, personal=True), 'show_dismiss': True,
@@ -203,7 +204,7 @@ def dashboard(request):
 def deadline_alerts(user):
     tasks = [task for task in hub_tasks(user) if task.status != Task.Status.COMPLETED]
     now = timezone.now()
-    return sorted([t for t in tasks if t.urgency_at(now) in ('yellow', 'red', 'overdue')], key=lambda t: t.ends_at)
+    return sorted([t for t in tasks if t.urgency_at(now) in ('yellow', 'overdue')], key=lambda t: t.ends_at)
 
 
 @login_required
@@ -227,7 +228,7 @@ def tv_dashboard(request):
     page = Paginator(tasks, 6).get_page(request.GET.get('page', 1))
     context = {
         'page': page, 'active_count': len(tasks),
-        'urgent_count': sum(t.urgency_at(now) in ('red', 'overdue') for t in tasks),
+        'urgent_count': sum(t.urgency_at(now) == 'overdue' for t in tasks),
         'warning_count': sum(t.urgency_at(now) == 'yellow' for t in tasks),
         'updated_at': now,
     }
@@ -365,7 +366,7 @@ def task_audience(request, pk):
             TaskChange.objects.create(task=task, actor=request.user, summary='Espectadores actualizados',
                 changes={'Visibilidad': {'before': before_label, 'after': audience_label(task)}})
         return redirect('task-detail', pk=task.pk)
-    return render(request, 'tasks/form.html', {'form': form, 'heading': 'Quién puede ver esta tarea', 'button': 'Guardar espectadores', 'task': task})
+    return render(request, 'tasks/form.html', {'form': form, 'heading': 'Quién puede visualizar mi tarea', 'button': 'Guardar espectadores', 'task': task})
 
 
 def audience_label(task):

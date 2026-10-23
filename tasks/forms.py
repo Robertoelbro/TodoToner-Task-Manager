@@ -15,6 +15,10 @@ class AssigneesMixin:
         self.fields['assignee_areas'] = forms.ModelMultipleChoiceField(label='Asignar a toda un área',
             queryset=Zone.objects.all(), required=False, widget=forms.CheckboxSelectMultiple,
             help_text='Se añadirán los usuarios activos que pertenezcan al área al guardar.')
+        names = list(self.fields)
+        names.remove('assignee_areas')
+        names.insert(names.index('assignees'), 'assignee_areas')
+        self.order_fields(names)
 
     def clean(self):
         data = super().clean()
@@ -54,6 +58,8 @@ class ScheduleValidationMixin:
 class AudienceMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['spectators'].label = 'Quién puede visualizar mi tarea'
+        self.fields['spectator_areas'].label = 'Áreas que pueden visualizar mi tarea'
         self.fields['spectators'].queryset = User.objects.filter(is_active=True, deleted_at__isnull=True,
             deletion_due_at__isnull=True).order_by('first_name', 'last_name', 'username')
         self.fields['spectators'].widget = forms.CheckboxSelectMultiple()
@@ -61,6 +67,10 @@ class AudienceMixin:
         self.fields['spectator_areas'].widget = forms.CheckboxSelectMultiple()
         self.fields['spectator_areas'].widget.choices = self.fields['spectator_areas'].choices
         self.fields['spectator_areas'].help_text = 'Acceso de lectura para los miembros actuales de estas áreas. Si cambian de área, cambia su acceso.'
+        names = list(self.fields)
+        names.remove('spectator_areas')
+        names.insert(names.index('spectators'), 'spectator_areas')
+        self.order_fields(names)
         self.fields['spectators'].help_text = 'Solo lectura. Las tareas exclusivas de gerencia siguen siendo privadas para gerencia.'
 
 

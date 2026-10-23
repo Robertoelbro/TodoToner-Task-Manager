@@ -7,11 +7,8 @@
 {{ field.errors }}</div>{% endfor %}</div>
 <div class="filter-actions"><button>Aplicar filtros</button><a href="{% url 'gantt' %}" id="gantt-clear">Limpiar filtros</a><span class="help">Solo se muestran tareas a las que tienes acceso.</span></div></form>
 <div class="stats"><div class="panel"><span>Tareas únicas</span><strong>{{ task_count }}</strong></div><div class="panel"><span>Responsables involucrados</span><strong>{{ worker_count }}</strong></div><div class="panel"><span>Fuera de plazo</span><strong>{{ overdue_count }}</strong><a class="button danger small" id="gantt-overdue" href="{{ overdue_url }}" aria-pressed="{{ overdue_only|yesno:'true,false' }}">{% if overdue_only %}Ver todas{% else %}Ver fuera de plazo{% endif %}</a></div></div>
-<section class="panel timeline-panel"><div class="section-heading"><h3>{% if overdue_only %}Gantt fuera de plazo{% else %}Gantt general{% endif %}</h3><span class="muted">{{ timeline.start|date:"d M Y" }} — {{ timeline.end|date:"d M Y" }}</span></div>
-<p class="help">Período planificado, con inicio y fecha límite incluidos. {% if timeline.step > 1 %}Columnas de hasta {{ timeline.step }} días.{% else %}Escala diaria.{% endif %} La línea vertical marca hoy.</p>
-{% include 'tasks/gantt.html' with rows=timeline.rows %}
-</section>
-<div class="section-heading"><h3>Desglose por zonas</h3></div>
-{% for group in zone_groups %}<details class="panel zone-panel"><summary>{{ group.name }} <span class="badge">{{ group.rows|length }} tareas</span></summary>
-{% include 'tasks/gantt.html' with rows=group.rows %}</details>{% endfor %}
-</section>
+<section class="panel timeline-panel" data-sheet-tabs>
+<div class="sheet-tabs" role="tablist" aria-label="Desglose del Gantt"><button type="button" role="tab" id="gantt-tab-all" aria-selected="true" aria-controls="gantt-sheet-all">General</button>{% for group in zone_groups %}<button type="button" role="tab" id="gantt-tab-{{ forloop.counter }}" aria-selected="false" tabindex="-1" aria-controls="gantt-sheet-{{ forloop.counter }}">{{ group.name }} <span class="badge">{{ group.rows|length }}</span></button>{% endfor %}</div>
+<div role="tabpanel" id="gantt-sheet-all" aria-labelledby="gantt-tab-all"><div class="section-heading"><h3>{% if overdue_only %}Gantt fuera de plazo{% else %}Gantt general{% endif %}</h3><span class="muted">{{ timeline.start|date:"d M Y" }} — {{ timeline.end|date:"d M Y" }}</span></div>{% include 'tasks/gantt.html' with rows=timeline.rows %}</div>
+{% for group in zone_groups %}<div role="tabpanel" id="gantt-sheet-{{ forloop.counter }}" aria-labelledby="gantt-tab-{{ forloop.counter }}" hidden><h3>{{ group.name }}</h3>{% include 'tasks/gantt.html' with rows=group.rows %}</div>{% endfor %}
+</section></section>

@@ -1,0 +1,7 @@
+<section class="hub-workspace" data-zone-workspace>
+<div class="sheet-tabs" role="tablist" aria-label="Desglose por zonas"><button type="button" role="tab" aria-selected="true" id="hub-tab-all" aria-controls="hub-sheet" data-zone="all">General</button>{% for zone in hub_zones %}<button type="button" role="tab" aria-selected="false" tabindex="-1" id="hub-tab-{{ zone.pk }}" aria-controls="hub-sheet" data-zone="{{ zone.pk }}">{{ zone.name }}</button>{% endfor %}</div>
+<div class="panel hub-sheet" id="hub-sheet" role="tabpanel" aria-labelledby="hub-tab-all">
+{% include 'tasks/monthly_goals.html' %}
+<div class="hub-layout"><section class="personal-section" aria-labelledby="personal-title"><div class="section-heading"><h2 id="personal-title">{% if user.can_supervise %}Tareas de mi equipo{% else %}Mis tareas{% endif %}</h2><span class="badge" data-zone-count>{{ hub_items|length }} tareas</span></div>
+<div class="task-grid">{% for task in hub_items %}{% include 'tasks/card.html' %}{% endfor %}<div class="panel empty" data-zone-empty {% if hub_items %}hidden{% endif %}><p>No hay tareas para esta selección.</p></div></div></section>
+<aside class="hub-side"><div id="deadline-alerts" data-url="{% url 'task-alerts' %}">{% include 'tasks/alerts.html' %}</div>{% include 'tasks/recent_changes.html' %}</aside></div></div></section>

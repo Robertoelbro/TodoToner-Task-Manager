@@ -2,12 +2,8 @@
   const clock = document.querySelector('[data-server-clock]');
   if (!clock) return;
   const time = clock.querySelector('time');
-  const preferenceKey = 'turno-clock-open';
-  try { clock.open = localStorage.getItem(preferenceKey) !== 'false'; } catch {}
-  clock.addEventListener('toggle', () => {
-    try { localStorage.setItem(preferenceKey, String(clock.open)); } catch {}
-  });
   let epoch = null, anchor = 0, formatter, pending = false;
+  window.turnoServerNow = () => epoch === null ? Date.now() : epoch + performance.now() - anchor;
   function render() {
     if (epoch === null) return;
     const date = new Date(epoch + performance.now() - anchor);
@@ -30,6 +26,7 @@
       epoch = data.timestamp + (anchor - start) / 2;
       time.title = 'Hora del servidor';
       render();
+      document.dispatchEvent(new Event('server-clock:sync'));
     } catch {
       time.title = epoch === null ? 'Sin conexión con el servidor' : 'Hora estimada: pendiente de sincronización';
     } finally {

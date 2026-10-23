@@ -1,4 +1,4 @@
 {% extends 'base.html' %}{% block content %}
 <section class="login-centered"><div class="panel auth"><h1>Mi perfil</h1><p>{{ user.username }} · {{ user.role_label }}</p>
 <form method="post">{% csrf_token %}{% include 'fields.html' %}<button>Guardar perfil</button></form>
-<p><a href="{% url 'recover-password' %}">Cambiar contraseña por correo</a></p></div></section>{% endblock %}
+</div></section>{% endblock %}

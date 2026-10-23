@@ -4,7 +4,7 @@
   function showPause() {
     if (!pauseButton) return;
     pauseButton.setAttribute('aria-pressed', String(paused));
-    pauseButton.textContent = paused ? 'Reanudar alertas y plazos automáticos' : 'Pausar alertas y plazos automáticos';
+    pauseButton.textContent = paused ? 'Reanudar actualizaciones automáticas' : 'Pausar actualizaciones automáticas';
   }
   pauseButton?.addEventListener('click', () => { paused = !paused; showPause(); });
   showPause();
@@ -13,14 +13,11 @@
     if (completed) return "completed";
     const remaining = end - now, duration = end - start;
     if (remaining <= 0) return "overdue";
-    if (duration > 0 && duration <= 86400000) {
-      return remaining > duration * 2 / 3 ? "green" : remaining > duration / 3 ? "yellow" : "red";
-    }
-    return remaining < 86400000 ? "red" : remaining <= 172800000 ? "yellow" : "green";
+    return duration > 0 && remaining <= duration * .25 ? "yellow" : "green";
   }
   function update() {
     if (paused) return;
-    const now = Date.now();
+    const now = window.turnoServerNow ? window.turnoServerNow() : Date.now();
     document.querySelectorAll("[data-urgency]").forEach(node => {
       const start = Date.parse(node.dataset.start), end = Date.parse(node.dataset.end);
       if (!Number.isFinite(start) || !Number.isFinite(end)) return;
@@ -41,6 +38,7 @@
       const html = await response.text();
       if (paused || target.contains(document.activeElement)) return;
       target.innerHTML = html;
+      target.dispatchEvent(new Event("alerts:updated", {bubbles:true}));
       target.removeAttribute("data-stale");
     } catch {
       target.setAttribute("data-stale", "true");
@@ -48,6 +46,7 @@
   }
   update();
   document.addEventListener("gantt:updated", update);
+  document.addEventListener("server-clock:sync", update);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { update(); refreshAlerts(); } });
   setInterval(update, 30000);
   setInterval(refreshAlerts, 60000);

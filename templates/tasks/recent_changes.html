@@ -1,5 +1,5 @@
 <section class="team-section" aria-labelledby="recent-title"><div class="section-heading"><div><p class="eyebrow">ACTIVIDAD RECIENTE</p><h2 id="recent-title">Últimos cambios en tareas</h2><p class="muted">Los últimos 20 movimientos{% if not user.can_supervise %} de las tareas que puedes consultar{% endif %}.</p></div></div>
-<div class="panel">{% for event in recent_changes %}<article class="history">
+<div class="panel">{% for event in recent_changes %}<article class="history" data-related-zones="{% for zone in event.task.zones.all %}{{ zone.pk }} {% endfor %}">
 <a href="{% url 'task-detail' event.task.pk %}"><strong>{{ event.task.title }}</strong></a>
 <p>{{ event.summary }} · {% if event.changes %}Modificado por:{% else %}Registrado por:{% endif %} {{ event.actor.display_name }}</p><small>{{ event.created_at|date:"d/m/Y H:i" }}</small>
 {% for field, values in event.changes.items %}<p><strong>{{ field }}:</strong> {{ values.before }} → {{ values.after }}</p>{% endfor %}

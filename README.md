@@ -66,7 +66,7 @@ Gerencia corresponde a is_superuser de Django y también puede supervisar tareas
 .\.venv\Scripts\python.exe manage.py createsuperuser
 ```
 
-Iniciar sesión en /login/ y abrir Usuarios (/usuarios/). Gerencia crea cuentas y edita nombre, apellido, correo, área y rol de las cuentas no gerenciales. Puede promoverlas a supervisor o gerencia. Las cuentas gerenciales quedan protegidas contra edición y eliminación desde esta vista. El perfil personal no permite cambiar área ni privilegios.
+Iniciar sesión en /login/ y abrir Usuarios (/usuarios/). Gerencia crea cuentas y edita únicamente área y rol de las cuentas no gerenciales que completaron su primer ingreso. Puede promoverlas a supervisor o gerencia. Las cuentas gerenciales quedan protegidas contra edición y eliminación desde esta vista. El perfil personal no permite cambiar área ni privilegios.
 
 Django Admin está deshabilitado: no existe la ruta /admin/. Las rutas inexistentes y los intentos sin permiso de acceder a gestión muestran un 404 personalizado sin listar rutas, incluso con DEBUG=True. DEBUG=False sigue siendo necesario en producción para evitar otras páginas técnicas de error.
 
@@ -230,8 +230,21 @@ GeoVictoria sigue pendiente.
 - Usuarios base consultan Mi Gantt con las tareas accesibles. Espectadores individuales o por área tienen acceso de lectura; la pertenencia actual al área determina el acceso. Crear una tarea o ser responsable permite elegir espectadores. El autor, responsables, supervisor a cargo y supervisión del equipo mantienen su acceso.
 - Asignar a toda un área incorpora los miembros activos al guardar; futuros integrantes no se asignan automáticamente. La búsqueda por nombre conserva selecciones aunque se filtre la lista.
 - Las subtareas tienen responsables y espectadores independientes. Ver una subtarea no concede acceso a su tarea principal ni viceversa. Eliminar la principal conserva sus subtareas como tareas independientes.
-- Gerencia entrega el usuario generado y una contraseña temporal, visible solo en la respuesta de creación. Se almacena únicamente su hash. En el primer ingreso se exige correo único y contraseña nueva distinta de la temporal antes de acceder al sistema.
+- Gerencia entrega el usuario generado y una contraseña temporal, que puede volver a consultar desde Usuarios hasta completar el primer ingreso. La base guarda el hash y un nonce aleatorio; la contraseña temporal se deriva del nonce mediante HMAC con la clave del servidor y no se guarda en texto plano. En el primer ingreso se exige correo único y contraseña nueva distinta de la temporal antes de acceder al sistema.
 - Las cuentas desactivadas o pendientes de eliminación no pueden iniciar sesión ni reactivarse. Al ingresar credenciales correctas se muestra Cuenta desactivada. La cancelación de eliminación permanece reservada a gerencia.
 - Los cambios de espectadores quedan en el historial con actor y valores anteriores/nuevos.
 
 Aplicar `python manage.py migrate` antes de iniciar esta versión. Incluye tareas 0011/0012 y cuentas 0006. No requiere nuevas dependencias.
+
+## Cambios de interfaz y entrega de credenciales (23 de octubre de 2026)
+
+- Los filtros de personas y los responsables/usuarios que pueden visualizar una tarea utilizan un buscador con flecha para abrir la lista. Al cargar está cerrado; escribir abre y filtra por nombre. Las selecciones múltiples se conservan y se muestran como etiquetas que se pueden quitar. Sin JavaScript se mantienen los controles originales.
+- Áreas de asignación y de visualización aparecen como casillas horizontales antes del buscador correspondiente. La misma presentación se usa en tareas y subtareas.
+- El hub agrupa contenido en una tarjeta con pestañas General y zonas; las pestañas filtran tareas, alertas y cambios visibles. El Gantt utiliza pestañas de zonas en lugar de paneles desplegados debajo del cronograma. Los filtros siguen aplicándose con el botón.
+- El reloj siempre aparece en el banner con texto blanco y se sincroniza con el servidor cada 30 segundos. Pausar actualizaciones de alertas no detiene el reloj ni los plazos reales.
+- Reemplaza los umbrales anteriores: hasta consumir el 75% del intervalo inicio-límite, verde; desde el 75% y antes de vencer, amarillo; al vencer, rojo. Las finalizadas no generan alertas. La regla se aplica a intervalos cortos y largos, en el servidor y en pantalla.
+- Perfil permite editar datos propios y ya no muestra el enlace de cambio de contraseña por correo. La recuperación desde login se conserva.
+- Mientras el primer ingreso esté pendiente, seleccionar un usuario desde gerencia muestra usuario y contraseña temporal. Las cuentas anteriores sin nonce requieren generar explícitamente una nueva contraseña temporal; los hashes antiguos no se pueden recuperar. El primer ingreso borra el nonce. La desactivación también lo borra. La consulta exige gerencia y respuestas sin caché; las cuentas pendientes no admiten edición de rol/área en esa pantalla.
+- Después del primer ingreso, gerencia solo cambia rol o área; nombres, correo y contraseña enviados artificialmente al formulario se ignoran. La protección de cuentas gerenciales se mantiene.
+
+Esta versión requiere `python manage.py migrate` (accounts.0007_user_onboarding_nonce) antes de servirla. No agrega dependencias.

@@ -76,3 +76,29 @@ main a:not(.button):not(.gantt-bar) {text-decoration:underline;text-underline-of
 #id_spectators {max-height:290px;overflow:auto;border:1px solid var(--line);border-radius:9px;padding:10px}
 #id_spectators label,#id_spectator_areas label,#id_assignee_areas label {display:flex;align-items:center;gap:10px;min-height:2.75rem;font-weight:400;margin:0;padding:6px}
 #id_spectators [hidden],#id_assignees [hidden] {display:none!important}
+
+/* Compact searchable people menus and spreadsheet-style zone tabs. */
+[hidden] {display:none!important}
+.people-picker {position:relative;min-width:0}
+.people-picker-input {display:flex;align-items:stretch}
+.people-picker-input input {flex:1;min-width:0;border-radius:8px 0 0 8px}
+.people-picker-input button {border-radius:0 8px 8px 0;min-width:2.75rem;padding:.3rem}
+.people-picker-popup {border:1px solid #65766a;border-radius:8px;padding:.5rem;background:#fff;max-height:18rem;overflow:auto;margin-top:.3rem}
+.people-picker-popup select {width:100%;min-height:10rem;border:0}
+.people-picker-popup #id_assignees,.people-picker-popup #id_spectators {border:0;max-height:none;padding:0}
+.people-selected {display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem;font-size:.875rem}
+#id_assignee_areas,#id_spectator_areas,#id_zones {display:flex;gap:.4rem 1rem;flex-wrap:wrap}
+#id_assignee_areas label,#id_spectator_areas label,#id_zones label {display:flex;align-items:center;gap:.4rem;white-space:normal}
+.sheet-tabs {display:flex;gap:.25rem;overflow-x:auto;padding:.3rem .2rem 0;border-bottom:1px solid #65766a;margin:0 0 1rem}
+.sheet-tabs [role=tab] {background:#edf2ee;color:#15231a;border:1px solid #65766a;border-radius:8px 8px 0 0;white-space:nowrap;flex-shrink:0}
+.sheet-tabs [aria-selected=true] {background:#166534;color:#fff;border-color:#166534}
+.sheet-tabs [aria-selected=true] .badge {background:#fff;color:#166534}
+.hub-workspace {min-height:calc(100dvh - 220px)}
+.hub-sheet {min-height:calc(100dvh - 270px)}
+.hub-sheet .hub-layout {margin-top:1rem}
+.server-clock {background:transparent!important;border:0!important;color:#fff;padding:0;position:static!important}
+.server-clock time {color:#fff!important;padding:0;font-size:1.5rem;white-space:nowrap}
+
+.people-picker-popup {position:absolute;z-index:30;left:0;right:0;top:2.75rem;box-shadow:0 5px 15px #0002}
+.people-picker-popup select {height:auto;min-height:4rem}
+.filter-field:has(.people-picker) .people-picker {margin-top:1.25rem}

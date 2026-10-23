@@ -27,12 +27,11 @@ class RegistrationForm(UniqueEmailMixin, UserCreationForm):
 
 
 
-class ManagedUserForm(UniqueEmailMixin, forms.ModelForm):
+class ManagedUserForm(forms.ModelForm):
     role = forms.ChoiceField(label='Rol', choices=[('base', 'Usuario base'), ('supervisor', 'Supervisor'), ('management', 'Gerencia')])
-    email = forms.EmailField(label='Correo electrónico', required=False)
     class Meta:
         model = User
-        fields = ('first_name', 'last_name', 'email', 'area')
+        fields = ('area',)
         labels = {'is_supervisor': 'Puede supervisar y reasignar tareas'}
 
     def __init__(self, *args, **kwargs):
@@ -53,10 +52,6 @@ class ManagedUserForm(UniqueEmailMixin, forms.ModelForm):
 class ManagedCreationForm(forms.ModelForm):
     first_name = forms.CharField(label='Nombre', max_length=150)
     last_name = forms.CharField(label='Apellido', max_length=150)
-    temporary_password = forms.CharField(label='Contraseña temporal', required=False, strip=False,
-        widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
-        help_text='Déjala vacía para generar una contraseña segura automáticamente.')
-
     class Meta:
         model = User
         fields = ('first_name', 'last_name', 'area')
@@ -64,18 +59,6 @@ class ManagedCreationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['area'].required = True
-
-    def clean(self):
-        from django.contrib.auth.password_validation import validate_password
-        data = super().clean()
-        if data.get('temporary_password'):
-            candidate = User(first_name=data.get('first_name', ''), last_name=data.get('last_name', ''))
-            try:
-                validate_password(data['temporary_password'], candidate)
-            except forms.ValidationError as error:
-                self.add_error('temporary_password', error)
-        return data
-
 
 from django.contrib.auth.forms import SetPasswordForm
 
@@ -100,6 +83,7 @@ class CompleteProfileForm(SetPasswordForm):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
         user.must_complete_profile = False
+        user.onboarding_nonce = ''
         if commit:
             user.save()
         return user

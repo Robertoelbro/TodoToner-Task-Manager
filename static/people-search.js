@@ -5,32 +5,72 @@
       const control = document.getElementById(id);
       if (!control || control.dataset.searchReady) continue;
       control.dataset.searchReady = 'true';
-      const label = document.createElement('label'), input = document.createElement('input');
-      input.type = 'search'; input.id = id + '_search'; input.autocomplete = 'off';
-      input.placeholder = 'Ej.: rob'; input.setAttribute('aria-controls', id);
-      label.htmlFor = input.id;
-      label.textContent = 'Buscar por nombre en ' + ({id_assignees:'responsables',id_spectators:'espectadores',id_worker:'trabajadores',id_supervisor:'supervisores'}[id]);
+      const single = control.tagName === 'SELECT';
+      const title = {id_assignees:'Responsables', id_spectators:'Quién puede visualizar mi tarea', id_worker:'Trabajador', id_supervisor:'Supervisor a cargo'}[id];
+      const wrapper = document.createElement('div'); wrapper.className = 'people-picker';
+      const row = document.createElement('div'); row.className = 'people-picker-input';
+      const input = document.createElement('input'); input.type = 'search'; input.id = id + '_search'; input.autocomplete = 'off';
+      input.placeholder = 'Ejemplo: Juan Pérez'; input.setAttribute('aria-label', title);
+      input.setAttribute('aria-controls', id + '_popup'); input.setAttribute('aria-expanded', 'false');
+      const toggle = document.createElement('button'); toggle.type = 'button'; toggle.className = 'secondary'; toggle.textContent = '▾';
+      toggle.setAttribute('aria-label', 'Abrir lista: ' + title); toggle.setAttribute('aria-controls', id + '_popup'); toggle.setAttribute('aria-expanded', 'false');
+      const popup = document.createElement('div'); popup.id = id + '_popup'; popup.className = 'people-picker-popup'; popup.hidden = true;
       const status = document.createElement('p'); status.className = 'help'; status.setAttribute('role','status');
-      control.before(label, input); control.after(status);
-      const options = control.tagName === 'SELECT' ? Array.from(control.options).map(o=>o.cloneNode(true)) : null;
-      input.addEventListener('input', () => {
-        const query = normalize(input.value.trim());
-        let count = 0;
-        if (options) {
-          const current = control.value;
-          const matches = options.filter(o => !o.value || normalize(o.textContent).includes(query) || o.value === current);
-          count = options.filter(o => o.value && normalize(o.textContent).includes(query)).length;
-          control.replaceChildren(...matches.map(o=>o.cloneNode(true)));
-          control.value = current;
-        } else {
-          control.querySelectorAll('label').forEach(item => {
-            const match = normalize(item.textContent).includes(query);
-            item.parentElement.hidden = !match;
-            if (match) count++;
-          });
+      const selected = document.createElement('div'); selected.className = 'people-selected';
+      control.before(wrapper); row.append(input,toggle); wrapper.append(row,selected,popup,status); popup.append(control);
+      if (single) {
+        control.size = 4;
+        if (id === 'id_worker' || (id === 'id_supervisor' && control.closest('.filter-field'))) {
+          const empty = [...control.options].find(option => !option.value);
+          if (empty) empty.textContent = 'Sin filtro';
         }
-        status.textContent = `${count} coincidencias. Las selecciones anteriores se conservan.`;
-      });
+        const label = document.querySelector(`label[for="${id}"]`);
+        if (label) label.classList.add('sr-only');
+        control.setAttribute('aria-label',title);
+      }
+      const options = single ? Array.from(control.options).map(o=>o.cloneNode(true)) : null;
+      function open(value) {
+        popup.hidden = !value;
+        input.setAttribute('aria-expanded',String(value)); toggle.setAttribute('aria-expanded',String(value));
+        toggle.setAttribute('aria-label',(value ? 'Cerrar lista: ' : 'Abrir lista: ') + title);
+      }
+      function selections() {
+        if (single) {
+          selected.textContent = control.value ? control.selectedOptions[0]?.textContent || '' : '';
+          return;
+        }
+        selected.replaceChildren();
+        control.querySelectorAll('input:checked').forEach(check => {
+          const chip = document.createElement('button'); chip.type = 'button'; chip.className = 'secondary small';
+          const name = check.closest('label').textContent.trim(); chip.textContent = name + ' ×'; chip.setAttribute('aria-label','Quitar ' + name);
+          chip.addEventListener('click',()=>{check.checked=false;check.dispatchEvent(new Event('change',{bubbles:true}));input.focus();});
+          selected.append(chip);
+        });
+      }
+      function filter() {
+        const query = normalize(input.value.trim()); let count = 0;
+        if (single) {
+          const current = control.value;
+          const matches = options.filter(o=>!o.value || normalize(o.textContent).includes(query));
+          count = matches.filter(o=>o.value).length;
+          // Keep the selected value submitted even when it does not match the search.
+          if (current && !matches.some(o=>o.value===current)) {
+            const prior = options.find(o=>o.value===current).cloneNode(true); prior.hidden=true; matches.push(prior);
+          }
+          control.replaceChildren(...matches.map(o=>o.cloneNode(true))); control.value=current;
+          control.size=Math.min(6,Math.max(2,matches.filter(o=>!o.hidden).length));
+        } else control.querySelectorAll('label').forEach(label=>{
+          const match=normalize(label.textContent).includes(query); label.parentElement.hidden=!match; if(match)count++;
+        });
+        status.textContent = count ? `${count} coincidencias.` : 'Sin coincidencias.';
+      }
+      toggle.addEventListener('click',()=>{if(popup.hidden){filter();open(true);}else open(false);});
+      input.addEventListener('input',()=>{filter();open(true);});
+      input.addEventListener('keydown',event=>{if(event.key==='ArrowDown'){event.preventDefault();filter();open(true);(single?control:control.querySelector('div:not([hidden]) input'))?.focus();}if(event.key==='Escape')open(false);});
+      wrapper.addEventListener('keydown',event=>{if(event.key==='Escape'){open(false);input.focus();}});
+      wrapper.addEventListener('focusout',()=>{setTimeout(()=>{if(!wrapper.contains(document.activeElement))open(false);},0);});
+      control.addEventListener('change',()=>{selections();if(single){open(false);input.value='';input.focus();}});
+      selections();
     }
   }
   enhance(); document.addEventListener('gantt:updated', enhance);

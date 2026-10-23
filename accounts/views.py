@@ -45,8 +45,7 @@ def user_create(request):
     if request.method == 'POST' and form.is_valid():
         user = form.save(commit=False)
         user.username = (slugify(user.first_name + '.' + user.last_name)[:110] or 'usuario') + '-' + secrets.token_hex(4)
-        password = form.cleaned_data['temporary_password'] or secrets.token_urlsafe(15)
-        user.set_password(password)
+        password = user.issue_temporary_password()
         user.must_complete_profile = True
         user.is_superuser = user.is_supervisor = user.is_staff = False
         user.save()
@@ -78,6 +77,7 @@ def complete_profile(request):
 
 
 @login_required
+@never_cache
 @require_http_methods(['GET', 'POST'])
 @transaction.atomic
 def users_manage(request, pk=None):
@@ -85,6 +85,13 @@ def users_manage(request, pk=None):
         raise Http404
     # Gerencia no cambia sus propios privilegios ni los de otra cuenta gerencial.
     target = get_object_or_404(User.objects.select_for_update(), pk=pk, is_superuser=False, deleted_at__isnull=True, deletion_due_at__isnull=True) if pk is not None else None
+    if target and target.must_complete_profile:
+        if request.method == 'POST' and request.POST.get('action') == 'renew-temporary':
+            target.issue_temporary_password()
+            target.save(update_fields=['password', 'onboarding_nonce'])
+            return redirect('user-edit', pk=target.pk)
+        password = target.temporary_password
+        return render(request, 'accounts/pending_credentials.html', {'target_user': target, 'temporary_password': password})
     form = ManagedUserForm(request.POST if request.method == 'POST' else None, instance=target) if target else None
     if request.method == 'POST':
         if target is None:
