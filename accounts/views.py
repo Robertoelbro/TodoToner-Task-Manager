@@ -67,6 +67,10 @@ def complete_profile(request):
         user = User.objects.select_for_update().get(pk=request.user.pk)
         if not user.is_active or user.deletion_due_at or user.deleted_at:
             return render(request, 'accounts/inactive.html', status=403)
+        if user.get_session_auth_hash() != request.user.get_session_auth_hash():
+            from django.contrib.auth import logout
+            logout(request)
+            return redirect('login')
         form = CompleteProfileForm(user, request.POST if request.method == 'POST' else None)
         if request.method == 'POST' and form.is_valid():
             user = form.save()
@@ -85,11 +89,7 @@ def users_manage(request, pk=None):
         raise Http404
     # Gerencia no cambia sus propios privilegios ni los de otra cuenta gerencial.
     target = get_object_or_404(User.objects.select_for_update(), pk=pk, is_superuser=False, deleted_at__isnull=True, deletion_due_at__isnull=True) if pk is not None else None
-    if target and target.must_complete_profile:
-        if request.method == 'POST' and request.POST.get('action') == 'renew-temporary':
-            target.issue_temporary_password()
-            target.save(update_fields=['password', 'onboarding_nonce'])
-            return redirect('user-edit', pk=target.pk)
+    if target and (target.must_complete_profile or target.must_change_password):
         password = target.temporary_password
         return render(request, 'accounts/pending_credentials.html', {'target_user': target, 'temporary_password': password})
     form = ManagedUserForm(request.POST if request.method == 'POST' else None, instance=target) if target else None
@@ -127,20 +127,6 @@ def profile(request):
     return render(request, 'accounts/profile.html', {'form': form})
 
 
-@login_required
-@require_http_methods(['GET'])
-def attendance(request):
-    if not request.user.can_supervise:
-        raise Http404
-    from django.utils import timezone
-    # Datos ficticios: no representan presencia real ni se guardan en la BD.
-    people = [
-        {'name': 'Colaborador de ejemplo A', 'zone': 'Ventas', 'status': 'Presente', 'time': '09:00'},
-        {'name': 'Colaborador de ejemplo B', 'zone': 'Postventas', 'status': 'Presente', 'time': '08:55'},
-        {'name': 'Colaborador de ejemplo C', 'zone': 'Bodega', 'status': 'Sin marcación', 'time': '—'},
-        {'name': 'Colaborador de ejemplo D', 'zone': 'Administración', 'status': 'Vacaciones', 'time': '—'},
-    ]
-    return render(request, 'accounts/attendance.html', {'people': people, 'today': timezone.localdate()})
 
 
 from django.db import transaction
@@ -168,3 +154,50 @@ def user_deletion(request, pk, cancel=False):
             messages.success(request, 'Eliminación cancelada.' if cancel else 'Eliminación programada; la cuenta quedó desactivada.')
             return redirect('users-manage')
     return render(request, 'accounts/deletion.html', {'form': form, 'target_user': target, 'cancel': cancel})
+
+
+@login_required
+@never_cache
+@sensitive_post_parameters('password')
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def password_reset_by_management(request, pk):
+    if not request.user.is_superuser:
+        raise Http404
+    target = get_object_or_404(User.objects.select_for_update(), pk=pk,
+        is_superuser=False, is_active=True, deleted_at__isnull=True, deletion_due_at__isnull=True)
+    form = DeletionConfirmationForm(request.POST if request.method == 'POST' else None, actor=request.user)
+    if request.method == 'POST' and form.is_valid():
+        target.issue_temporary_password()
+        target.must_change_password = True
+        target.save(update_fields=['password', 'onboarding_nonce', 'must_change_password'])
+        messages.success(request, 'Se generó una nueva clave temporal. El trabajador deberá cambiarla al ingresar.')
+        return redirect('user-edit', pk=target.pk)
+    return render(request, 'accounts/reset_password.html', {'form': form, 'target_user': target})
+
+
+@login_required
+@never_cache
+@sensitive_post_parameters('old_password', 'new_password1', 'new_password2')
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def password_change(request):
+    from django.contrib.auth import update_session_auth_hash, logout
+    from .forms import ForcedPasswordForm, SelfPasswordChangeForm
+    user = get_object_or_404(User.objects.select_for_update(), pk=request.user.pk,
+        is_active=True, deleted_at__isnull=True, deletion_due_at__isnull=True)
+    if user.get_session_auth_hash() != request.user.get_session_auth_hash():
+        logout(request)
+        return redirect('login')
+    forced = user.must_change_password
+    form_class = ForcedPasswordForm if forced else SelfPasswordChangeForm
+    form = form_class(user, request.POST if request.method == 'POST' else None)
+    if request.method == 'POST' and form.is_valid():
+        user = form.save(commit=False)
+        user.must_change_password = False
+        user.onboarding_nonce = ''
+        user.save(update_fields=['password', 'must_change_password', 'onboarding_nonce'])
+        update_session_auth_hash(request, user)
+        messages.success(request, 'Contraseña actualizada.')
+        return redirect('task-list' if forced else 'profile')
+    return render(request, 'accounts/password_change.html', {'form': form, 'forced': forced})

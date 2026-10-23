@@ -204,7 +204,7 @@ def dashboard(request):
 def deadline_alerts(user):
     tasks = [task for task in hub_tasks(user) if task.status != Task.Status.COMPLETED]
     now = timezone.now()
-    return sorted([t for t in tasks if t.urgency_at(now) in ('yellow', 'overdue')], key=lambda t: t.ends_at)
+    return sorted([t for t in tasks if t.urgency_at(now) == 'overdue'], key=lambda t: t.ends_at)
 
 
 @login_required
@@ -290,26 +290,6 @@ def task_hide(request, pk):
     task.hidden_by.add(request.user)
     messages.success(request, 'Tarea oculta en tu hub. Puedes consultarla en Historial.')
     return redirect('task-list')
-
-
-@login_required
-@require_http_methods(['GET', 'POST'])
-@transaction.atomic
-def task_delete(request, pk):
-    if not request.user.can_supervise:
-        raise PermissionDenied
-    get_object_or_404(visible_tasks(request.user, include_deleted=True), pk=pk)
-    task = get_object_or_404(Task.objects.select_for_update(), pk=pk)
-    get_object_or_404(visible_tasks(request.user, include_deleted=True), pk=pk)
-    if not can_supervise_task(request.user, task):
-        raise PermissionDenied
-    if request.method == 'POST':
-        if request.POST.get('confirm') != 'yes':
-            return render(request, 'tasks/delete.html', {'task': task, 'error': 'Confirma la eliminación.'}, status=400)
-        task.delete()
-        messages.success(request, 'Tarea eliminada definitivamente de la base de datos.')
-        return redirect('task-history')
-    return render(request, 'tasks/delete.html', {'task': task})
 
 
 @require_http_methods(['GET'])

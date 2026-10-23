@@ -1,12 +1,12 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-import uuid
 
 
 class User(AbstractUser):
     area = models.ForeignKey('tasks.Zone', null=True, blank=True, on_delete=models.PROTECT,
                              related_name='members', verbose_name='Área')
     must_complete_profile = models.BooleanField(default=False)
+    must_change_password = models.BooleanField(default=False)
     onboarding_nonce = models.CharField(max_length=64, blank=True, editable=False)
 
     def issue_temporary_password(self):
@@ -21,7 +21,7 @@ class User(AbstractUser):
     def temporary_password(self):
         from django.conf import settings
         from django.utils.crypto import salted_hmac
-        if not self.must_complete_profile or not self.onboarding_nonce or not self.is_active or self.deletion_due_at or self.deleted_at:
+        if not (self.must_complete_profile or self.must_change_password) or not self.onboarding_nonce or not self.is_active or self.deletion_due_at or self.deleted_at:
             return None
         for key in [settings.SECRET_KEY, *settings.SECRET_KEY_FALLBACKS]:
             candidate = salted_hmac('turno.onboarding', self.onboarding_nonce, secret=key, algorithm='sha256').hexdigest()[:24]
@@ -55,18 +55,4 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.display_name
-
-
-class RecoveryRequest(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    email_key = models.CharField(max_length=64, db_index=True)
-    purpose = models.CharField(max_length=10)
-    user = models.ForeignKey(User, null=True, on_delete=models.CASCADE)
-    code_hash = models.CharField(max_length=128, blank=True)
-    account_token = models.CharField(max_length=128, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-    attempts = models.PositiveSmallIntegerField(default=0)
-    verified = models.BooleanField(default=False)
-    consumed = models.BooleanField(default=False)
 

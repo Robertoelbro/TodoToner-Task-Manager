@@ -44,20 +44,10 @@ ni automáticamente al construir previews. Aplicar nuevas migraciones explícita
 del despliegue correspondiente.
 
 ## Publicación y comprobación
-La recuperación de acceso requiere aplicar también `accounts.0005_recoveryrequest`
-en la base de destino con `manage.py migrate` antes de desplegar este cambio.
-Configurar EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend, EMAIL_HOST,
-EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD y DEFAULT_FROM_EMAIL con un remitente
-autorizado por el proveedor. Puerto 587 suele usar EMAIL_USE_TLS=True y EMAIL_USE_SSL=False;
-usar los valores indicados por el proveedor. Guardar credenciales solo como variables privadas.
-Sin SMTP configurado no se entregan correos reales. Validar un envío con una cuenta propia
-antes de habilitar recuperación. No usar el backend de consola en producción.
-
 Subir los cambios al repositorio conectado. En Vercel, usar el framework Django y sus
 comandos predeterminados; desplegar/redeploy después de configurar la base y las variables.
 Probar /login/, estilos/logo, creación de tarea, ocultar del hub, historial y gestión.
-Comprobar persistencia tras un redeploy. El registro público sigue habilitado: usar datos
-ficticios para esta demo y preparar cuentas de prueba. La base remota es independiente de SQLite.
+Comprobar persistencia tras un redeploy. El registro público está cerrado; gerencia crea las cuentas. La base remota es independiente de SQLite.
 
 Vercel Hobby está limitado a uso personal no comercial; usar un plan apropiado para la empresa.
 Documentación: https://vercel.com/docs/frameworks/full-stack/django
@@ -71,3 +61,10 @@ Antes de habilitar esta versión, ejecutar `python manage.py migrate` con la con
 ## Entrega consultable de credenciales temporales
 
 Aplicar `python manage.py migrate` con la conexión Neon usada por Vercel antes de habilitar esta versión: añade `accounts.0007_user_onboarding_nonce`. Las cuentas nuevas guardan un nonce aleatorio para derivar la contraseña temporal con la clave del servidor; no se almacena el texto de la contraseña. Mantener la misma DJANGO_SECRET_KEY entre instancias. Al rotar la clave, usar SECRET_KEY_FALLBACKS de Django durante la transición si se necesita conservar la consulta de credenciales pendientes. Las cuentas anteriores sin nonce permiten renovar explícitamente la contraseña temporal desde gerencia. No se cambian automáticamente contraseñas existentes.
+
+
+## Restablecimiento por gerencia y retirada de recuperación por correo
+
+Antes de desplegar, aplicar `python manage.py migrate` en la base Neon de destino: incluye `accounts.0008_user_must_change_password_delete_recoveryrequest`. Se agrega un indicador de cambio obligatorio y se elimina la tabla de solicitudes de recuperación, que ya no se utiliza. La migración no cambia contraseñas existentes.
+
+El proyecto ya no necesita variables de correo. Las variables SMTP antiguas pueden retirarse del panel de Vercel; el código ya no las lee ni envía correos. No hay rutas de recuperación, asistencia ni eliminación de tareas. Gerencia restablece claves desde Usuarios y cada trabajador puede cambiar su clave desde una sesión iniciada.

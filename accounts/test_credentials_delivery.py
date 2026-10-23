@@ -58,7 +58,7 @@ class CredentialDeliveryTests(TestCase):
         response=self.client.get(reverse('user-edit',args=[self.worker.pk]))
         self.assertIsNone(response.context['temporary_password'])
         self.assertTrue(self.worker.check_password(self.password))
-        self.client.post(reverse('user-edit',args=[self.worker.pk]),{'action':'renew-temporary'})
+        self.client.post(reverse('user-password-reset',args=[self.worker.pk]),{'password':'Manager-94-pass!'})
         self.worker.refresh_from_db()
         self.assertTrue(self.worker.check_password(self.worker.temporary_password))
         self.assertFalse(self.worker.check_password(self.password))

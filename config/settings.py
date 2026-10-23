@@ -77,14 +77,8 @@ CSRF_COOKIE_SECURE = not DEBUG
 SECURE_SSL_REDIRECT = not DEBUG
 SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
 
-# En desarrollo, el correo se imprime en la terminal; producción requiere SMTP.
-EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = env('EMAIL_HOST', default='localhost')
-EMAIL_PORT = env.int('EMAIL_PORT', default=587)
-EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
-EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
-EMAIL_TIMEOUT = 10
-DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='Todotoner <no-reply@localhost>')
 
+
+
+# Esta aplicación no envía correos; las claves se restablecen desde gerencia.
+EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'

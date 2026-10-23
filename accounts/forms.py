@@ -83,6 +83,7 @@ class CompleteProfileForm(SetPasswordForm):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
         user.must_complete_profile = False
+        user.must_change_password = False
         user.onboarding_nonce = ''
         if commit:
             user.save()
@@ -122,11 +123,20 @@ class ProfileForm(UniqueEmailMixin, forms.ModelForm):
         return data
 
 
-class RecoveryEmailForm(forms.Form):
-    email = forms.EmailField(label='Correo de tu cuenta', widget=forms.EmailInput(attrs={'autocomplete': 'email'}))
+from django.contrib.auth.forms import PasswordChangeForm
 
 
-class RecoveryCodeForm(forms.Form):
-    code = forms.RegexField(label='Código de confirmación', regex=r'^\d{6}$',
-        error_messages={'invalid': 'Ingresa los seis dígitos del código.'},
-        widget=forms.TextInput(attrs={'inputmode': 'numeric', 'autocomplete': 'one-time-code', 'maxlength': '6'}))
+class DifferentPasswordMixin:
+    def clean_new_password1(self):
+        password = self.cleaned_data['new_password1']
+        if self.user.check_password(password):
+            raise forms.ValidationError('Elige una contraseña distinta de la actual o temporal.')
+        return password
+
+
+class ForcedPasswordForm(DifferentPasswordMixin, SetPasswordForm):
+    pass
+
+
+class SelfPasswordChangeForm(DifferentPasswordMixin, PasswordChangeForm):
+    pass

@@ -172,14 +172,9 @@ Antes del vencimiento se puede cancelar y restaurar el estado activo/inactivo an
 
 La migración agrega el cuarto sector Administración. Las tareas pueden combinarlo con Ventas, Postventas y Bodega.
 
-### Historial y eliminación de tareas
+### Historial y tareas
 
-- El menú Historial reúne las tareas finalizadas, las que ocultaste de tu hub y las eliminadas. Los usuarios base mantienen acceso únicamente a las tareas que crearon o tienen asignadas; supervisores y gerencia pueden consultar todas.
-- La × de una tarea vencida o finalizada solo la oculta del hub y las alertas del usuario que la presiona. No elimina registros ni afecta al hub de otros usuarios. Las tareas en proceso no se pueden ocultar, incluso vencidas.
-- Las tareas finalizadas aparecen automáticamente en Historial y pueden permanecer en el hub hasta que el usuario las oculte. Si se reabren o reprograman y dejan de ser ocultables, vuelven al hub.
-- Supervisores y gerencia pueden usar Eliminar tarea desde el detalle, con una pantalla de confirmación. La eliminación de tareas es definitiva: borra la tarea, sus relaciones y sus cambios de la base de datos y del historial. El botón de confirmación espera 5 segundos. Los usuarios y las zonas se conservan. Ocultar con × sigue siendo una acción personal que conserva la tarea.
-- Después de actualizar el proyecto, ejecuta `.\.venv\Scripts\python.exe manage.py migrate` antes de iniciar el servidor.
-
+Las tareas se conservan en la base y en el historial. No existe opción ni ruta para eliminarlas. La × del hub permite ocultar personalmente tareas vencidas o finalizadas según las reglas existentes y no elimina registros.
 
 ### Historial completo y filtros mensuales
 El historial incluye todas las tareas conservadas a las que tiene acceso el usuario,
@@ -195,32 +190,11 @@ conservando sus permisos y su alcance personal. Las tareas borradas definitivame
 no se pueden recuperar desde este historial.
 
 
-### Perfil, recuperación y privacidad de gerencia
-El nombre y rol del menú abren Mi perfil. Cada cuenta edita únicamente sus nombres,
-apellidos y correo; cambiar el correo exige su contraseña actual. Registro, perfil y
-edición gerencial rechazan correos duplicados sin distinguir mayúsculas. Si ya existen
-cuentas con un mismo correo, corregirlas desde Usuarios: recuperación no selecciona
-arbitrariamente una de ellas.
+### Perfil, contraseñas y privacidad de gerencia
 
-En login hay pantallas separadas para recuperar usuario por correo y contraseña por
-código de seis dígitos. El código se almacena como hash, caduca a los diez minutos,
-admite cinco intentos y se vincula a la sesión solicitante. Tras verificarlo aparece
-la pantalla de contraseña nueva y confirmación, con los validadores de Django.
-Un cambio de contraseña invalida los códigos pendientes. Se limita a un envío por
-minuto y tres por quince minutos por correo, además del límite por sesión. El mensaje
-público no confirma si existe la cuenta. En local con DEBUG=True el correo aparece en
-la terminal; para entrega real configurar SMTP (ver .env.example y DEPLOY_VERCEL.md).
+El perfil permite editar nombres y correo y cambiar la contraseña desde una sesión iniciada, confirmando la contraseña actual. No existe recuperación por correo, códigos, envíos SMTP ni registro público. Si se pierde el acceso, gerencia genera una nueva clave temporal para un usuario activo no gerencial, confirmando su propia contraseña. Cada solicitud cambia la clave, invalida las sesiones anteriores del trabajador y exige elegir una contraseña personal al entrar. Si era su primer ingreso, sigue siendo obligatorio completar el correo. Las credenciales temporales dejan de poder consultarse al completar el cambio.
 
-Las tareas asignadas exclusivamente a responsables de gerencia son privadas para gerencia.
-Las compartidas con usuarios base o supervisores conservan su visibilidad habitual.
-Las privadas se excluyen del hub, alertas, historial, cambios, Gantt y TV de
-usuarios base y supervisores, y tampoco admiten acceso o modificación mediante URL.
-Una tarea creada por gerencia para otros responsables conserva su visibilidad habitual.
-Los números internos no se muestran en las tarjetas, detalle ni tabla del historial.
-
-Asistencia es una demostración reservada a supervisores y gerencia con personas y
-estados ficticios, sin grabar marcaciones ni inferir asistencia de inicios de sesión.
-GeoVictoria sigue pendiente.
+Las tareas asignadas exclusivamente a gerencia permanecen privadas y las compartidas conservan sus permisos. Asistencia está deshabilitada, sin enlace ni ruta pública. El mockup reservado para la futura integración solo distingue Presente y No presente, sin horas de entrada ni otras categorías.
 
 ## Áreas, espectadores, subtareas y primer ingreso (octubre 2026)
 
@@ -241,10 +215,18 @@ Aplicar `python manage.py migrate` antes de iniciar esta versión. Incluye tarea
 - Los filtros de personas y los responsables/usuarios que pueden visualizar una tarea utilizan un buscador con flecha para abrir la lista. Al cargar está cerrado; escribir abre y filtra por nombre. Las selecciones múltiples se conservan y se muestran como etiquetas que se pueden quitar. Sin JavaScript se mantienen los controles originales.
 - Áreas de asignación y de visualización aparecen como casillas horizontales antes del buscador correspondiente. La misma presentación se usa en tareas y subtareas.
 - El hub agrupa contenido en una tarjeta con pestañas General y zonas; las pestañas filtran tareas, alertas y cambios visibles. El Gantt utiliza pestañas de zonas en lugar de paneles desplegados debajo del cronograma. Los filtros siguen aplicándose con el botón.
-- El reloj siempre aparece en el banner con texto blanco y se sincroniza con el servidor cada 30 segundos. Pausar actualizaciones de alertas no detiene el reloj ni los plazos reales.
+- El reloj siempre aparece en el banner con texto blanco y se sincroniza con el servidor cada 30 segundos. Las actualizaciones de alertas son automáticas; se retiró el botón para pausarlas.
 - Reemplaza los umbrales anteriores: hasta consumir el 75% del intervalo inicio-límite, verde; desde el 75% y antes de vencer, amarillo; al vencer, rojo. Las finalizadas no generan alertas. La regla se aplica a intervalos cortos y largos, en el servidor y en pantalla.
-- Perfil permite editar datos propios y ya no muestra el enlace de cambio de contraseña por correo. La recuperación desde login se conserva.
+- Perfil permite editar datos propios y cambiar la contraseña dentro de la sesión. La recuperación por correo se retiró por completo.
 - Mientras el primer ingreso esté pendiente, seleccionar un usuario desde gerencia muestra usuario y contraseña temporal. Las cuentas anteriores sin nonce requieren generar explícitamente una nueva contraseña temporal; los hashes antiguos no se pueden recuperar. El primer ingreso borra el nonce. La desactivación también lo borra. La consulta exige gerencia y respuestas sin caché; las cuentas pendientes no admiten edición de rol/área en esa pantalla.
 - Después del primer ingreso, gerencia solo cambia rol o área; nombres, correo y contraseña enviados artificialmente al formulario se ignoran. La protección de cuentas gerenciales se mantiene.
 
 Esta versión requiere `python manage.py migrate` (accounts.0007_user_onboarding_nonce) antes de servirla. No agrega dependencias.
+
+## Restablecimiento desde gerencia y funciones retiradas
+
+La migración `accounts.0008_user_must_change_password_delete_recoveryrequest` agrega el indicador de cambio obligatorio y elimina la tabla de solicitudes de recuperación antiguas. No cambia contraseñas de usuarios por sí sola. Aplicar la migración antes del despliegue; no se deben revertir migraciones históricas para quitar la recuperación.
+
+Gerencia abre Usuarios → trabajador → Generar nueva clave temporal. El POST exige CSRF y contraseña de gerencia; cada generación es nueva. Solo afecta cuentas activas no gerenciales y no reactiva cuentas pendientes de eliminación. La clave se entrega por un medio privado. El trabajador ingresa con ella y debe sustituirla antes de navegar. Los demás usuarios cambian su contraseña desde Mi perfil → Cambiar mi contraseña y confirman la actual. El cambio conserva la sesión actual e invalida otras sesiones.
+
+Se retiraron recuperación de usuario/contraseña por correo, formularios de códigos, servicio de correo, botón de pausa del hub y eliminación de tareas. Las rutas antiguas devuelven 404. El panel del hub muestra únicamente tareas vencidas; las próximas a vencer ya no aparecen en ese panel. Asistencia permanece sin ruta pública y su mockup usa solo Presente/No presente.

@@ -25,11 +25,12 @@ class OnboardingMiddleware:
             if request.user.deletion_due_at or request.user.deleted_at or not request.user.is_active:
                 logout(request)
                 return render(request, 'accounts/inactive.html', status=403)
-            if request.user.must_complete_profile:
+            if request.user.must_complete_profile or request.user.must_change_password:
+                destination = 'complete-profile' if request.user.must_complete_profile else 'password-change'
                 try:
                     match = resolve(request.path_info)
                 except Resolver404:
-                    return redirect('complete-profile')
-                if match.url_name not in ('complete-profile', 'logout', 'server-time'):
-                    return redirect('complete-profile')
+                    return redirect(destination)
+                if match.url_name not in (destination, 'logout', 'server-time'):
+                    return redirect(destination)
         return self.get_response(request)

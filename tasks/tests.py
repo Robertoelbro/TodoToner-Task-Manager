@@ -382,6 +382,9 @@ class UrgencyTests(TestCase):
         task.assignees.add(owner)
         with patch('tasks.models.timezone.now', return_value=self.start + timedelta(hours=7)):
             self.client.force_login(owner)
+            self.assertNotContains(self.client.get(reverse('task-alerts')), 'Temporal')
+        with patch('tasks.models.timezone.now', return_value=self.start + timedelta(hours=9)):
+            self.client.force_login(owner)
             self.assertContains(self.client.get(reverse('task-alerts')), 'Temporal')
             self.client.force_login(stranger)
             self.assertNotContains(self.client.get(reverse('task-alerts')), 'Temporal')
@@ -494,42 +497,22 @@ class TaskHistoryTests(TestCase):
         self.assertFalse(self.task.hidden_by.exists())
 
     def test_base_cannot_delete_and_unrelated_cannot_see_or_hide(self):
-        self.assertEqual(self.client.post(reverse('task-delete', args=[self.task.pk]), {'confirm':'yes'}).status_code,403)
+        self.assertEqual(self.client.post(f'/tareas/{self.task.pk}/eliminar/', {'confirm':'yes'}).status_code,404)
         self.client.force_login(self.other)
         self.assertEqual(self.client.post(reverse('task-hide', args=[self.task.pk])).status_code,404)
         self.assertEqual(self.client.get(reverse('task-detail', args=[self.task.pk])).status_code,404)
         self.assertNotIn(self.task,self.client.get(reverse('task-history')).context['page'])
 
-    def test_supervisor_delete_is_permanent_and_requires_confirmation(self):
-        self.client.force_login(self.supervisor)
+    def test_no_role_can_delete_tasks(self):
         pk = self.task.pk
-        AssignmentChange.objects.create(task=self.task, actor=self.owner, new_assignees=[])
         TaskChange.objects.create(task=self.task, actor=self.owner, summary='Created')
-        zone = Zone.objects.get(code='bodega')
-        self.task.zones.add(zone)
-        self.task.hidden_by.add(self.owner)
-        url = reverse('task-delete', args=[pk])
-        self.assertContains(self.client.get(url), 'disabled data-delete-button')
-        self.assertTrue(Task.objects.filter(pk=pk).exists())
-        self.assertEqual(self.client.post(url).status_code,400)
-        self.assertTrue(Task.objects.filter(pk=pk).exists())
-        csrf_client = Client(enforce_csrf_checks=True)
-        csrf_client.force_login(self.supervisor)
-        self.assertEqual(csrf_client.post(url, {'confirm':'yes'}).status_code,403)
-        self.assertEqual(self.client.post(url,{'confirm':'yes'}).status_code,302)
-        self.assertFalse(Task.objects.filter(pk=pk).exists())
-        self.assertFalse(AssignmentChange.objects.filter(task_id=pk).exists())
-        self.assertFalse(TaskChange.objects.filter(task_id=pk).exists())
-        for field in ('assignees', 'zones', 'hidden_by'):
-            self.assertFalse(getattr(Task, field).through.objects.filter(task_id=pk).exists())
-        self.assertTrue(User.objects.filter(pk=self.worker.pk).exists())
-        self.assertTrue(Zone.objects.filter(pk=zone.pk).exists())
-        self.assertEqual(self.client.get(reverse('task-detail',args=[pk])).status_code,404)
-        self.assertEqual(self.client.get(reverse('task-history')).context['page'].paginator.count,0)
-
-    def test_management_can_delete(self):
-        self.client.force_login(self.manager)
-        self.assertEqual(self.client.post(reverse('task-delete',args=[self.task.pk]),{'confirm':'yes'}).status_code,302)
+        for user in (self.owner, self.worker, self.supervisor, self.manager):
+            self.client.force_login(user)
+            self.assertEqual(self.client.get(f'/tareas/{pk}/eliminar/').status_code,404)
+            self.assertEqual(self.client.post(f'/tareas/{pk}/eliminar/',{'confirm':'yes'}).status_code,404)
+            self.assertTrue(Task.objects.filter(pk=pk).exists())
+            self.assertTrue(TaskChange.objects.filter(task_id=pk).exists())
+            self.assertNotContains(self.client.get(reverse('task-detail',args=[pk])),'Eliminar tarea')
 
     def test_hide_requires_csrf(self):
         client = Client(enforce_csrf_checks=True)

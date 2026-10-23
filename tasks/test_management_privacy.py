@@ -23,7 +23,7 @@ class ManagementPrivacyTests(TestCase):
             if user.can_supervise:
                 for route in ('dashboard', 'gantt', 'tv-dashboard'):
                     self.assertNotContains(self.client.get(reverse(route)), self.task.title)
-                for route in ('task-reassign', 'task-tracking', 'task-delete'):
+                for route in ('task-reassign', 'task-tracking'):
                     self.assertEqual(self.client.get(reverse(route, args=[self.task.pk])).status_code, 404)
                     self.assertEqual(self.client.post(reverse(route, args=[self.task.pk]), {'confirm': 'yes'}).status_code, 404)
             self.assertEqual(self.client.get(reverse('task-detail', args=[self.task.pk])).status_code, 404)

@@ -4,14 +4,14 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Turno · Actividades{% endblock %}</title>
 <link rel="icon" type="image/png" href="{% static 'brand/logo.png' %}">
-<link rel="stylesheet" href="{% static 'app.css' %}"><link rel="stylesheet" href="{% static 'server-clock.css' %}"><link rel="stylesheet" href="{% static 'accessibility.css' %}?v=20261023-2"></head>
+<link rel="stylesheet" href="{% static 'app.css' %}"><link rel="stylesheet" href="{% static 'server-clock.css' %}"><link rel="stylesheet" href="{% static 'accessibility.css' %}?v=20261023-3"></head>
 <body>
 <a class="skip-link" href="#main-content">Saltar al contenido principal</a>
 <header class="topbar"><a class="brand" href="{% url 'task-list' %}"><img class="brand-logo" src="{% static 'brand/logo.png' %}" alt="Todotoner"> <span>Todotoner</span></a>
 <nav aria-label="Navegación principal">
 {% if user.is_authenticated %}
 <a href="{% url 'task-list' %}">Hub principal</a><a href="{% url 'task-history' %}">Historial</a>
-<a href="{% url 'gantt' %}">{% if user.can_supervise %}Gantt{% else %}Mi Gantt{% endif %}</a>{% if user.can_supervise %}<a href="{% url 'tv-dashboard' %}">Dashboard TV</a><a href="{% url 'attendance' %}">Asistencia</a>{% endif %}
+<a href="{% url 'gantt' %}">{% if user.can_supervise %}Gantt{% else %}Mi Gantt{% endif %}</a>{% if user.can_supervise %}<a href="{% url 'tv-dashboard' %}">Dashboard TV</a>{% endif %}
 {% if user.is_superuser %}<a href="{% url 'users-manage' %}">Usuarios</a>{% endif %}
 <a class="identity" href="{% url 'profile' %}" title="Editar mi perfil">{{ user.display_name }} · {{ user.role_label }}</a>
 <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="secondary small">Salir</button></form>
@@ -19,13 +19,12 @@
 </nav>{% include 'server_clock.html' %}</header>
 <main class="container" id="main-content" tabindex="-1">
 {% for message in messages %}<div class="notice" role="status">{{ message }}</div>{% endfor %}
-{% if user.is_authenticated %}<div class="update-controls"><button type="button" id="pause-updates" class="secondary small" aria-pressed="false">Pausar actualizaciones automáticas</button></div>{% endif %}
 {% block content %}{% endblock %}
 </main>
 <footer>Turno · Gestión de actividades</footer>
-<script src="{% static 'urgency.js' %}?v=20261023-2" defer></script>
-<script src="{% static 'server-clock.js' %}?v=20261023-2" defer></script>
-<script src="{% static 'people-search.js' %}?v=20261023-2" defer></script>
-<script src="{% static 'zone-tabs.js' %}?v=20261023-2" defer></script>
+<script src="{% static 'urgency.js' %}?v=20261023-3" defer></script>
+<script src="{% static 'server-clock.js' %}?v=20261023-3" defer></script>
+<script src="{% static 'people-search.js' %}?v=20261023-3" defer></script>
+<script src="{% static 'zone-tabs.js' %}?v=20261023-3" defer></script>
 </body></html>
 

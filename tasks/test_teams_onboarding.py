@@ -36,7 +36,7 @@ class TeamSharingTests(TestCase):
         self.foreign.spectators.add(self.sup)
         self.client.force_login(self.sup)
         self.assertEqual(self.client.get(reverse('task-detail',args=[self.foreign.pk])).status_code,200)
-        for route in ('task-tracking','task-reassign','task-delete','task-audience','subtask-create'):
+        for route in ('task-tracking','task-reassign','task-audience','subtask-create'):
             self.assertEqual(self.client.post(reverse(route,args=[self.foreign.pk]),{}).status_code,403,route)
 
     def test_area_access_changes_with_membership_and_management_stays_private(self):

@@ -13,7 +13,7 @@ Estos cambios no constituyen una declaración de conformidad ni una auditoría c
 - Reloj integrado en la cabecera para evitar superponer controles al ampliar.
 - Etiquetas de vencimiento en el Gantt, además del color.
 - Restauración de foco al aplicar filtros; no reemplazar alertas que contienen el foco.
-- Controles para pausar actualizaciones y respeto de prefers-reduced-motion.
+- El hub actualiza alertas automáticamente; el botón de pausa fue retirado por decisión de producto. Los estilos de movimiento reducido se conservan.
 - Pausa TV detiene tanto la rotación como la actualización de datos.
 
 ## Comprobaciones realizadas
@@ -32,4 +32,4 @@ personalizado, navegación completa con Tab/Shift+Tab/Enter/Espacio y lector de 
 (por ejemplo NVDA). Revisar login, errores de formularios, perfil, hub, historial,
 Gantt y TV. Ejecutar auditoría automatizada en navegador y revisión manual antes de
 afirmar conformidad completa. Verificar que el foco se conserve después de filtros,
-que no haya contenido cortado y que los controles de pausa detengan las actualizaciones.
+que no haya contenido cortado y revisar de nuevo los criterios relacionados con actualizaciones automáticas.
