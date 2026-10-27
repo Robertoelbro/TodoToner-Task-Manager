@@ -17,16 +17,18 @@
       if (label) label.textContent = labels[state];
     });
   }
-  let loading = false;
+  let loading = false, revision = 0;
+  document.addEventListener("task:hidden", () => { revision++; });
   async function refreshAlerts() {
     const target = document.getElementById("deadline-alerts");
     if (!target || document.hidden || loading || target.contains(document.activeElement)) return;
     loading = true;
+    const requestedRevision = revision;
     try {
       const response = await fetch(target.dataset.url, {credentials:"same-origin"});
       if (!response.ok || response.redirected || response.headers.get("X-Turno-Fragment") !== "alerts") throw new Error();
       const html = await response.text();
-      if (target.contains(document.activeElement)) return;
+      if (target.contains(document.activeElement) || requestedRevision !== revision) return;
       target.innerHTML = html;
       target.dispatchEvent(new Event("alerts:updated", {bubbles:true}));
       target.removeAttribute("data-stale");

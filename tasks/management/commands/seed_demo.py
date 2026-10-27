@@ -3,7 +3,7 @@ import gzip
 import json
 import os
 import random
-from datetime import date, datetime, time, timedelta
+from datetime import datetime, time, timedelta
 from pathlib import Path
 
 from django.contrib.admin.models import LogEntry
@@ -39,6 +39,9 @@ class Command(BaseCommand):
         rng = random.Random(options['seed'])
         User = get_user_model()
         today = timezone.localdate()
+        month = today.replace(day=1)
+        next_month = (month.replace(day=28) + timedelta(days=4)).replace(day=1)
+        last_day = next_month - timedelta(days=1)
         roster = [('ventas', 'Ventas', 'Roberto', 'Pérez', 'Camila', 'Soto'),
                   ('postventas', 'Postventas', 'Daniela', 'Rojas', 'Felipe', 'Díaz'),
                   ('storage', 'Storage', 'Martín', 'Silva', 'Antonia', 'Vega'),
@@ -65,8 +68,8 @@ class Command(BaseCommand):
             User.objects.all().delete()
             Zone.objects.all().delete()
             zones = [Zone.objects.create(code=row[0], name=row[1]) for row in roster]
-            manager = User.objects.create_superuser(username='agerente', password=password,
-                first_name='Andrea', last_name='Gerente', email='agerente@example.invalid', area=zones[3])
+            manager = User.objects.create_superuser(username='gerencia', password=password,
+                first_name='Gerencia', last_name='Demo', email='gerencia@example.invalid', area=zones[3])
             users, supervisors = [], []
             for zone, row in zip(zones, roster):
                 for supervisor, first, last in [(True, row[2], row[3]), (False, row[4], row[5])]:
@@ -80,6 +83,10 @@ class Command(BaseCommand):
                         supervisors.append(user)
 
             def create_task(title, start, end, status, zone, parent=None):
+                start = max(month, min(start, last_day))
+                end = max(start, min(end, last_day))
+                if start > today:
+                    status = Task.Status.PENDING
                 start_at = timezone.make_aware(datetime.combine(start, time(9)))
                 end_at = timezone.make_aware(datetime.combine(end, time(18)))
                 task = Task.objects.create(title=title,
@@ -112,27 +119,27 @@ class Command(BaseCommand):
                       'Revisar casos pendientes', 'Optimizar almacenamiento', 'Revisar facturación', 'Preparar entregas']
             for index, title in enumerate(titles):
                 zone = zones[index % 5]
-                # Vencidas, activas, finalizadas y futuras; intervalos también cruzan meses.
+                # Vencidas, activas, finalizadas y futuras, siempre dentro del mes actual.
                 offset, length = [(-8, 3), (-3, 6), (-7, 5), (2, 7)][index % 4]
                 status = Task.Status.values[index % 4]
+                if index % 8 == 2:
+                    status = Task.Status.COMPLETED
                 task = create_task(title, today + timedelta(days=offset), today + timedelta(days=offset + length), status, zone)
                 if index % 2 == 0:
                     create_task(f'Validar avance: {title.lower()}', task.start_date, task.deadline,
                                 rng.choice(Task.Status.values), zone, parent=task)
-            for advance in range(3):
-                absolute_month = today.year * 12 + today.month - 1 + advance
-                month = date(absolute_month // 12, absolute_month % 12 + 1, 1)
-                for zone in [*zones, None]:
-                    goal = MonthlyGoal.objects.create(title=f'Meta {zone.name if zone else "general"}: mejora mensual',
-                        description='Completar el plan mensual y revisar los indicadores del equipo.',
-                        month=month, created_by=manager)
-                    goal.zones.set([zone] if zone else zones)
+            for zone in [*zones, None]:
+                goal = MonthlyGoal.objects.create(title=f'Meta {zone.name if zone else "general"}: mejora mensual',
+                    description='Completar el plan mensual y revisar los indicadores del equipo.',
+                    month=month, created_by=manager)
+                goal.zones.set([zone] if zone else zones)
             assert User.objects.count() == 11
             assert Task.objects.filter(parent=None).count() == 20
             assert Task.objects.exclude(parent=None).count() == 10
-            assert MonthlyGoal.objects.count() == 18
+            assert MonthlyGoal.objects.count() == 6
+            assert not Task.objects.exclude(start_date__gte=month, deadline__lte=last_day).exists()
             assert all(user.check_password(password) for user in User.objects.all())
-        self.stdout.write(self.style.SUCCESS('Demostración creada: 11 cuentas (agerente + 10 colaboradores), 20 tareas, 10 subtareas, 18 metas.'))
+        self.stdout.write(self.style.SUCCESS('Demostración creada: 11 cuentas (gerencia + 10 colaboradores), 20 tareas, 10 subtareas y 6 metas del mes actual.'))
         self.stdout.write(f'Respaldo previo: {backup}')
         for user in User.objects.select_related('area').order_by('pk'):
             self.stdout.write(f'{user.username} | {user.role_label} | {user.area}')

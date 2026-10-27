@@ -25,7 +25,9 @@
           const badge = root.querySelector('[data-alert-count]');
           if (badge) badge.textContent = alertCount;
           const empty = root.querySelector('[data-zone-alert-empty]');
-          if (empty) empty.hidden = alertCount > 0 || !alerts.length;
+          if (empty) empty.hidden = alertCount > 0;
+          const globalEmpty = root.querySelector('[data-alert-global-empty]');
+          if (globalEmpty && empty) globalEmpty.hidden = true;
 
         } else root.querySelectorAll('[role=tabpanel]').forEach(panel => { panel.hidden = panel.id !== tab.getAttribute('aria-controls'); });
       }

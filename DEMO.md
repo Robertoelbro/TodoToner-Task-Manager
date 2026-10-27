@@ -9,7 +9,7 @@ No modifica el esquema ni el registro de migraciones. Usa una ruta nueva por eje
 Los respaldos contienen datos privados y hashes de contraseña: no se publican en Git.
 
 Crea 10 colaboradores: un supervisor y un usuario base por cada una de las cinco
-áreas, además de la cuenta gerencial `agerente` (11 cuentas en total).
+áreas, además de la cuenta gerencial `gerencia` (11 cuentas en total).
 Los nombres de acceso son `supervisor_ventas`, `usuario_ventas`, y el mismo patrón
 para `postventas`, `storage`, `administracion` y `bodega`.
 Todas usan la contraseña `contraseña` y están listas para entrar sin primer ingreso.
@@ -19,8 +19,8 @@ La variable `DEMO_PASSWORD` permite cambiar la clave del conjunto al ejecutar el
 Genera 20 tareas principales y 10 subtareas adicionales, con prioridades, estados,
 responsables y espectadores individuales y por área variados. Hay fechas pasadas,
 actuales y futuras. Las fechas se calculan respecto del día de ejecución en Chile.
-Incluye seis metas (una por área y una general) para el mes actual y para cada uno
-de los dos meses siguientes: 18 metas en total. Se usa aleatoriedad reproducible;
+Incluye seis metas del mes actual: una por área y una general. Todas las tareas
+y subtareas empiezan y terminan dentro del mes actual en Chile. Se usa aleatoriedad reproducible;
 `--seed 123` permite cambiar la distribución.
 
 La política de contraseñas acepta desde cinco caracteres, sin exigir mayúsculas,

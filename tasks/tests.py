@@ -479,6 +479,14 @@ class TaskHistoryTests(TestCase):
         self.assertIn(self.task, self.client.get(reverse('task-list')).context['tasks'])
         self.assertIn(self.task, self.client.get(reverse('task-history')).context['page'])
 
+    def test_ajax_hide_returns_json_and_preserves_record(self):
+        response = self.client.post(reverse('task-hide', args=[self.task.pk]),
+                                    HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'hidden': True, 'task_id': self.task.pk})
+        self.assertTrue(self.task.hidden_by.filter(pk=self.owner.pk).exists())
+        self.assertTrue(Task.objects.filter(pk=self.task.pk).exists())
+
     def test_completed_automatically_in_history_and_can_hide(self):
         self.task.status = Task.Status.COMPLETED
         self.task.save()

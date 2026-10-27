@@ -8,6 +8,8 @@
     const focused = content.contains(document.activeElement) ? document.activeElement : null;
     const focusId = focused?.id;
     const current = ++sequence;
+    const charts = [...content.querySelectorAll(".gantt-scroll")];
+    charts.forEach(chart => window.turnoLoading?.(chart, true));
     if (controller) controller.abort();
     controller = new AbortController();
     content.setAttribute("aria-busy", "true");
@@ -42,6 +44,7 @@
       }
     } finally {
       if (current === sequence) {
+        charts.forEach(chart => window.turnoLoading?.(chart, false));
         content.removeAttribute("aria-busy");
         const submit = content.querySelector(".filter-actions button");
         if (submit) submit.disabled = false;

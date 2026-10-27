@@ -288,6 +288,11 @@ def task_hide(request, pk):
     if not task.can_hide:
         raise PermissionDenied('Solo puedes ocultar tareas vencidas o finalizadas que no estén en proceso.')
     task.hidden_by.add(request.user)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        from django.http import JsonResponse
+        response = JsonResponse({'hidden': True, 'task_id': task.pk})
+        response['Cache-Control'] = 'no-store'
+        return response
     messages.success(request, 'Tarea oculta en tu hub. Puedes consultarla en Historial.')
     return redirect('task-list')
 

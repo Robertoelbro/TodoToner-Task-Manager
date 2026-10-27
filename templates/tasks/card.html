@@ -1,4 +1,4 @@
-<article data-task-zones="{% for zone in task.zones.all %}{{ zone.pk }} {% endfor %}" class="panel task-card urgency-{{ task.urgency }}" data-urgency data-start="{{ task.starts_at|date:'c' }}" data-end="{{ task.ends_at|date:'c' }}" data-completed="{% if task.status == 'completed' %}1{% else %}0{% endif %}">
+<article data-task-id="{{ task.pk }}" data-task-zones="{% for zone in task.zones.all %}{{ zone.pk }} {% endfor %}" class="panel task-card urgency-{{ task.urgency }}" data-urgency data-start="{{ task.starts_at|date:'c' }}" data-end="{{ task.ends_at|date:'c' }}" data-completed="{% if task.status == 'completed' %}1{% else %}0{% endif %}">
 {% if show_dismiss and task.can_hide %}<form class="task-dismiss" method="post" action="{% url 'task-hide' task.pk %}">{% csrf_token %}<button title="Ocultar de mi hub; conservar en Historial" aria-label="Ocultar {{ task.title }} de mi hub">×</button></form>{% endif %}
 {% if task.deleted_at %}<span class="badge">Eliminada · solo consulta</span>{% endif %}
 <div class="card-top"><span class="badge urgency-label">{{ task.urgency_label }}</span></div>
