@@ -56,9 +56,8 @@ if ON_VERCEL:
 
 AUTH_USER_MODEL = 'accounts.User'
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': f'django.contrib.auth.password_validation.{validator}'}
-    for validator in ['UserAttributeSimilarityValidator', 'MinimumLengthValidator',
-                      'CommonPasswordValidator', 'NumericPasswordValidator']
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+     'OPTIONS': {'min_length': 5}},
 ]
 LANGUAGE_CODE = 'es-cl'
 TIME_ZONE = 'America/Santiago'
