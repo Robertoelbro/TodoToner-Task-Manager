@@ -1,5 +1,18 @@
 # Demostración
 
+## Reinicio solo con cuentas
+
+`python manage.py seed_demo --reset --confirm-reset REEMPLAZAR_DATOS_DEMO --backup backups/antes-solo-cuentas.json.gz --accounts-only --manager-username roberto`
+
+Reemplaza los datos por `roberto` como única gerencia y diez usuarios base, dos por
+área: `usuario_ventas_1`, `usuario_ventas_2` y el mismo patrón para `postventas`,
+`storage`, `administracion` y `bodega`. Todos usan `contraseña`. No crea tareas,
+subtareas, metas ni supervisores. Gerencia puede ascender cuentas desde Usuarios
+→ Editar usuario → Rol → Gerencia. Las cuentas gerenciales siguen protegidas
+contra edición y eliminación desde esa vista.
+
+## Demostración con tareas
+
 `python manage.py seed_demo --reset --confirm-reset REEMPLAZAR_DATOS_DEMO --backup backups/antes-demo.json.gz`
 
 **Reemplaza todos los usuarios, tareas, metas y sesiones de la base configurada.**

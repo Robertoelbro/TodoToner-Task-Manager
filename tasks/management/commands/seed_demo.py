@@ -26,6 +26,8 @@ class Command(BaseCommand):
         parser.add_argument('--confirm-reset')
         parser.add_argument('--backup', required=True, help='Ruta nueva para respaldo JSON comprimido.')
         parser.add_argument('--seed', type=int, default=27102026)
+        parser.add_argument('--accounts-only', action='store_true', help='Solo gerencia y dos usuarios base por área; sin tareas ni metas.')
+        parser.add_argument('--manager-username', default='gerencia')
 
     def handle(self, *args, **options):
         if not options['reset'] or options['confirm_reset'] != 'REEMPLAZAR_DATOS_DEMO':
@@ -52,7 +54,8 @@ class Command(BaseCommand):
             models = [Zone, User, Task, AssignmentChange, TaskChange, MonthlyGoal, Session, LogEntry]
             snapshot = []
             for model in models:
-                snapshot.extend(json.loads(serializers.serialize('json', model.objects.all())))
+                relations = [field.name for field in model._meta.many_to_many]
+                snapshot.extend(json.loads(serializers.serialize('json', model.objects.prefetch_related(*relations))))
             with backup.open('xb') as raw:
                 if os.name != 'nt':
                     os.chmod(backup, 0o600)
@@ -68,19 +71,36 @@ class Command(BaseCommand):
             User.objects.all().delete()
             Zone.objects.all().delete()
             zones = [Zone.objects.create(code=row[0], name=row[1]) for row in roster]
-            manager = User.objects.create_superuser(username='gerencia', password=password,
-                first_name='Gerencia', last_name='Demo', email='gerencia@example.invalid', area=zones[3])
+            manager_name = options['manager_username']
+            manager = User.objects.create_superuser(username=manager_name, password=password,
+                first_name='Roberto' if manager_name == 'roberto' else 'Gerencia',
+                last_name='Demo', email=f'{manager_name}@example.invalid', area=zones[3])
             users, supervisors = [], []
             for zone, row in zip(zones, roster):
-                for supervisor, first, last in [(True, row[2], row[3]), (False, row[4], row[5])]:
-                    user = User.objects.create_user(username=f'{"supervisor" if supervisor else "usuario"}_{zone.code}',
+                for slot, (supervisor, first, last) in enumerate([(True, row[2], row[3]), (False, row[4], row[5])], 1):
+                    if options['accounts_only']:
+                        supervisor = False
+                    username = f'usuario_{zone.code}_{slot}' if options['accounts_only'] else f'{"supervisor" if supervisor else "usuario"}_{zone.code}'
+                    user = User.objects.create_user(username=username,
                         password=password, first_name=first, last_name=last,
-                        email=f'{"supervisor" if supervisor else "usuario"}_{zone.code}@example.invalid',
+                        email=f'{username}@example.invalid',
                         area=zone, is_supervisor=supervisor,
                         must_complete_profile=False, must_change_password=False)
                     users.append(user)
                     if supervisor:
                         supervisors.append(user)
+
+            if options['accounts_only']:
+                assert User.objects.count() == 11
+                assert User.objects.filter(is_superuser=True).count() == 1
+                assert User.objects.filter(is_supervisor=True).count() == 0
+                assert not Task.objects.exists() and not MonthlyGoal.objects.exists()
+                assert all(User.objects.filter(area=zone, is_superuser=False).count() == 2 for zone in zones)
+                self.stdout.write(self.style.SUCCESS(f'Carga lista: {manager_name} como única gerencia y 10 usuarios base. Sin tareas, subtareas ni metas.'))
+                self.stdout.write(f'Respaldo previo: {backup}')
+                for user in User.objects.select_related('area').order_by('pk'):
+                    self.stdout.write(f'{user.username} | {user.role_label} | {user.area}')
+                return
 
             def create_task(title, start, end, status, zone, parent=None):
                 start = max(month, min(start, last_day))
@@ -139,7 +159,7 @@ class Command(BaseCommand):
             assert MonthlyGoal.objects.count() == 6
             assert not Task.objects.exclude(start_date__gte=month, deadline__lte=last_day).exists()
             assert all(user.check_password(password) for user in User.objects.all())
-        self.stdout.write(self.style.SUCCESS('Demostración creada: 11 cuentas (gerencia + 10 colaboradores), 20 tareas, 10 subtareas y 6 metas del mes actual.'))
+        self.stdout.write(self.style.SUCCESS(f'Demostración creada: 11 cuentas ({manager_name} + 10 colaboradores), 20 tareas, 10 subtareas y 6 metas del mes actual.'))
         self.stdout.write(f'Respaldo previo: {backup}')
         for user in User.objects.select_related('area').order_by('pk'):
             self.stdout.write(f'{user.username} | {user.role_label} | {user.area}')

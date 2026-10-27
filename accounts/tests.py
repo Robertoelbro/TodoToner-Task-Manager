@@ -82,6 +82,18 @@ class ManagementTests(TestCase):
         self.assertFalse(self.supervisor.is_supervisor)
         self.assertEqual(self.client.post(reverse('user-edit', args=[self.boss.pk]), {}).status_code, 404)
 
+    def test_management_can_promote_base_or_supervisor_to_management(self):
+        self.client.force_login(self.boss)
+        for target in [self.worker, self.supervisor]:
+            response = self.client.post(reverse('user-edit', args=[target.pk]),
+                                        {'role': 'management', 'area': self.area.pk})
+            self.assertRedirects(response, reverse('users-manage'))
+            target.refresh_from_db()
+            self.assertTrue(target.is_superuser)
+            self.assertTrue(target.is_staff)
+            self.assertFalse(target.is_supervisor)
+            self.assertEqual(self.client.get(reverse('user-edit', args=[target.pk])).status_code, 404)
+
     def test_custom_404_and_disabled_admin_even_in_debug(self):
         for debug in [True, False]:
             with override_settings(DEBUG=debug):
