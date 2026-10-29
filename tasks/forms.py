@@ -39,7 +39,7 @@ class ScheduleValidationMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['zones'].required = False
-        self.fields['zones'].label = 'Zonas involucradas (opcional)'
+        self.fields['zones'].label = 'Añadir etiqueta de zona (opcional)'
         self.fields['zones'].help_text = 'Puedes guardar la tarea sin seleccionar zonas.'
         for name in ('start_time', 'deadline_time'):
             self.fields[name].required = False
