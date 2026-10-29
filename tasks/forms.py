@@ -4,6 +4,16 @@ from accounts.models import User
 from .models import Task, Zone
 
 
+def user_choice_label(user):
+    area = user.area.name if user.area_id else 'Sin área'
+    return f'{user.display_name} · {user.role_label} · {area}'
+
+
+def add_user_details(field):
+    field.queryset = field.queryset.select_related('area')
+    field.label_from_instance = user_choice_label
+
+
 class AreaCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
     def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
         option = super().create_option(name, value, label, selected, index, subindex, attrs)
@@ -16,6 +26,7 @@ class AssigneesMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['assignees'].queryset = User.objects.filter(is_active=True, deleted_at__isnull=True, deletion_due_at__isnull=True).order_by('first_name', 'username')
+        add_user_details(self.fields['assignees'])
         self.fields['assignees'].widget = AreaCheckboxSelectMultiple()
         self.fields['assignees'].widget.choices = self.fields['assignees'].choices
         self.fields['assignees'].help_text = 'Selecciona una o más personas.'
@@ -46,6 +57,8 @@ class AssigneesMixin:
 class ScheduleValidationMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        if 'supervisor' in self.fields:
+            add_user_details(self.fields['supervisor'])
         self.fields['zones'].required = False
         self.fields['zones'].label = 'Añadir etiqueta de zona (opcional)'
         self.fields['zones'].help_text = 'Puedes guardar la tarea sin seleccionar zonas.'
@@ -73,6 +86,7 @@ class AudienceMixin:
         self.fields['spectator_areas'].label = 'Áreas que pueden visualizar mi tarea'
         self.fields['spectators'].queryset = User.objects.filter(is_active=True, deleted_at__isnull=True,
             deletion_due_at__isnull=True).order_by('first_name', 'last_name', 'username')
+        add_user_details(self.fields['spectators'])
         self.fields['spectators'].widget = AreaCheckboxSelectMultiple()
         self.fields['spectators'].widget.choices = self.fields['spectators'].choices
         self.fields['spectator_areas'].widget = forms.CheckboxSelectMultiple()
@@ -146,6 +160,11 @@ class DashboardFilterForm(forms.Form):
     status = forms.ChoiceField(label='Estado', required=False, choices=[('', 'Todos los estados')] + list(Task.Status.choices))
     multiple = forms.BooleanField(label='Más de un responsable', required=False)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for name in ('worker', 'supervisor'):
+            add_user_details(self.fields[name])
+
     def clean(self):
         data = super().clean()
         if data.get('month') and not data.get('year'):
@@ -158,7 +177,7 @@ class HistoryFilterForm(DashboardFilterForm):
         super().__init__(*args, **kwargs)
         for name in ('priority', 'supervisor', 'multiple'):
             self.fields.pop(name)
-        self.fields['worker'].queryset = User.objects.all().order_by('first_name', 'username')
+        self.fields['worker'].queryset = User.objects.select_related('area').order_by('first_name', 'username')
 
 
 from .models import MonthlyGoal

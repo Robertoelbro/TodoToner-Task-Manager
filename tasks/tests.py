@@ -37,6 +37,22 @@ class TaskPermissionsTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(self.task.zones.exists())
 
+    def test_people_selectors_show_name_role_and_area(self):
+        from .forms import TaskForm, ReassignmentForm, TaskAudienceForm, TaskTrackingForm, DashboardFilterForm, HistoryFilterForm
+        manager = User.objects.create_user(username='label-manager', first_name='Elena', is_superuser=True,
+                                           area=Zone.objects.get(code='administracion'))
+        no_area = User.objects.create_user(username='sin-area', first_name='Pedro')
+        multiple = [(TaskForm(), 'assignees'), (ReassignmentForm(), 'assignees'),
+                    (TaskAudienceForm(), 'spectators'), (DashboardFilterForm(), 'worker'), (HistoryFilterForm(), 'worker')]
+        for form, field in multiple:
+            html = str(form[field])
+            self.assertIn('Elena · Gerencia · Administración', html)
+            self.assertIn('Ana · Usuario base · Bodega', html)
+            self.assertIn('supervisor · Supervisor · Bodega', html)
+            self.assertIn('Pedro · Usuario base · Sin área', html)
+        for form in [TaskForm(), TaskTrackingForm(), DashboardFilterForm()]:
+            self.assertIn('supervisor · Supervisor · Bodega', str(form['supervisor']))
+
     def test_base_creates_task_with_multiple_assignees(self):
         response = self.client.post(reverse('task-create'), {
             'start_date': timezone.localdate().isoformat(), 'zones': [self.zone.pk], 'priority': 'medium', 'title': 'Contar cajas', 'description': 'Bodega',
