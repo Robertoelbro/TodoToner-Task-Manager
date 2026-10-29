@@ -25,7 +25,14 @@
           if (empty) empty.textContent = 'Sin filtro';
         }
         const label = document.querySelector(`label[for="${id}"]`);
-        if (label) label.classList.add('sr-only');
+        if (label) {
+          if (id === 'id_supervisor' && !control.closest('.filter-field')) {
+            label.classList.remove('sr-only');
+            label.htmlFor = input.id;
+            label.textContent = 'Supervisor a cargo (opcional)';
+            input.setAttribute('aria-label', 'Supervisor a cargo (opcional)');
+          } else label.classList.add('sr-only');
+        }
         control.setAttribute('aria-label',title);
       }
       const options = single ? Array.from(control.options).map(o=>o.cloneNode(true)) : null;
