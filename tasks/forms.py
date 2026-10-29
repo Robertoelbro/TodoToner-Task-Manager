@@ -6,6 +6,8 @@ from .models import Task, Zone
 
 def user_choice_label(user):
     area = user.area.name if user.area_id else 'Sin área'
+    if user.is_supervisor and not user.is_superuser and user.area_id:
+        return f'{user.display_name} · Supervisor de {area}'
     return f'{user.display_name} · {user.role_label} · {area}'
 
 

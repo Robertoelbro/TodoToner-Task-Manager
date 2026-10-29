@@ -48,10 +48,10 @@ class TaskPermissionsTests(TestCase):
             html = str(form[field])
             self.assertIn('Elena · Gerencia · Administración', html)
             self.assertIn('Ana · Usuario base · Bodega', html)
-            self.assertIn('supervisor · Supervisor · Bodega', html)
+            self.assertIn('supervisor · Supervisor de Bodega', html)
             self.assertIn('Pedro · Usuario base · Sin área', html)
         for form in [TaskForm(), TaskTrackingForm(), DashboardFilterForm()]:
-            self.assertIn('supervisor · Supervisor · Bodega', str(form['supervisor']))
+            self.assertIn('supervisor · Supervisor de Bodega', str(form['supervisor']))
 
     def test_base_creates_task_with_multiple_assignees(self):
         response = self.client.post(reverse('task-create'), {
