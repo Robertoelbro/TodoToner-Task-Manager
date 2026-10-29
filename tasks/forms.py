@@ -73,7 +73,7 @@ class AudienceMixin:
         self.fields['spectator_areas'].label = 'Áreas que pueden visualizar mi tarea'
         self.fields['spectators'].queryset = User.objects.filter(is_active=True, deleted_at__isnull=True,
             deletion_due_at__isnull=True).order_by('first_name', 'last_name', 'username')
-        self.fields['spectators'].widget = forms.CheckboxSelectMultiple()
+        self.fields['spectators'].widget = AreaCheckboxSelectMultiple()
         self.fields['spectators'].widget.choices = self.fields['spectators'].choices
         self.fields['spectator_areas'].widget = forms.CheckboxSelectMultiple()
         self.fields['spectator_areas'].widget.choices = self.fields['spectator_areas'].choices

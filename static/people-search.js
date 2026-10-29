@@ -52,7 +52,7 @@
           const name = check.closest('label').textContent.trim(); chip.textContent = name + ' ×'; chip.setAttribute('aria-label','Quitar ' + name);
           if (check.dataset.assignedByArea === 'true') {
             chip.textContent = name + ' (área)'; chip.disabled = true;
-            chip.setAttribute('aria-label', name + ', asignado por área');
+            chip.setAttribute('aria-label', name + ', seleccionado por área');
             chip.title = 'Desmarca el área para quitar la selección automática.';
           }
           chip.addEventListener('click',()=>{check.checked=false;check.dispatchEvent(new Event('change',{bubbles:true}));input.focus();});
@@ -82,8 +82,8 @@
       wrapper.addEventListener('keydown',event=>{if(event.key==='Escape'){open(false);input.focus();}});
       wrapper.addEventListener('focusout',()=>{setTimeout(()=>{if(!wrapper.contains(document.activeElement))open(false);},0);});
       control.addEventListener('change',()=>{selections();if(single){open(false);input.value='';input.focus();}});
-      if (id === 'id_assignees') {
-        const areas = document.getElementById('id_assignee_areas');
+      if (id === 'id_assignees' || id === 'id_spectators') {
+        const areas = document.getElementById(id === 'id_assignees' ? 'id_assignee_areas' : 'id_spectator_areas');
         if (areas) {
           const checks = [...control.querySelectorAll('input[type=checkbox]')];
           const manual = new Set(checks.filter(check => check.checked).map(check => check.value));
@@ -91,14 +91,14 @@
             const selectedAreas = new Set([...areas.querySelectorAll('input:checked')].map(check => check.value));
             checks.forEach(check => {
               const automatic = selectedAreas.has(check.dataset.areaId);
-              check.dataset.assignedByArea = String(automatic);
+              check.dataset.assignedByArea = String(automatic && !manual.has(check.value));
               check.checked = automatic || manual.has(check.value);
-              check.disabled = automatic;
+              check.disabled = automatic && !manual.has(check.value);
             });
             selections();
             if (selectedAreas.size) {
               const count = checks.filter(check => check.checked).length;
-              status.textContent = count + ' responsables seleccionados. Los marcados por área se incluyen automáticamente.';
+              status.textContent = count + (id === 'id_assignees' ? ' responsables seleccionados.' : ' usuarios con acceso seleccionados.') + ' Los marcados por área se incluyen automáticamente.';
             } else status.textContent = '';
           }
           areas.addEventListener('change', syncAreas);
