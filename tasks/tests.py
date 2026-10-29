@@ -27,6 +27,16 @@ class TaskPermissionsTests(TestCase):
     def setUp(self):
         self.client.force_login(self.base)
 
+    def test_supervisor_can_clear_zones_when_updating_task(self):
+        self.client.force_login(self.supervisor)
+        response = self.client.post(reverse('task-tracking', args=[self.task.pk]), {
+            'priority': 'medium', 'status': 'pending',
+            'start_date': self.task.start_date.isoformat(),
+            'deadline': self.task.deadline.isoformat(), 'zones': [],
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(self.task.zones.exists())
+
     def test_base_creates_task_with_multiple_assignees(self):
         response = self.client.post(reverse('task-create'), {
             'start_date': timezone.localdate().isoformat(), 'zones': [self.zone.pk], 'priority': 'medium', 'title': 'Contar cajas', 'description': 'Bodega',
@@ -279,6 +289,11 @@ class HubTests(TestCase):
         self.assertIn('deadline', response.context['form'].errors)
         data['start_date'] = self.today.isoformat()
         data['zones'] = []
+        data['title'] = 'Sin zonas'
+        response = self.client.post(reverse('task-create'), data)
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Task.objects.get(title='Sin zonas').zones.exists())
+        data['zones'] = [999999]
         response = self.client.post(reverse('task-create'), data)
         self.assertIn('zones', response.context['form'].errors)
 
