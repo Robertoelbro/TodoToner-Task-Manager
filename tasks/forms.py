@@ -4,17 +4,25 @@ from accounts.models import User
 from .models import Task, Zone
 
 
+class AreaCheckboxSelectMultiple(forms.CheckboxSelectMultiple):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        user = getattr(value, 'instance', None)
+        option['attrs']['data-area-id'] = str(user.area_id or '') if user else ''
+        return option
+
+
 class AssigneesMixin:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['assignees'].queryset = User.objects.filter(is_active=True, deleted_at__isnull=True, deletion_due_at__isnull=True).order_by('first_name', 'username')
-        self.fields['assignees'].widget = forms.CheckboxSelectMultiple()
+        self.fields['assignees'].widget = AreaCheckboxSelectMultiple()
         self.fields['assignees'].widget.choices = self.fields['assignees'].choices
         self.fields['assignees'].help_text = 'Selecciona una o más personas.'
         self.fields['assignees'].required = False
         self.fields['assignee_areas'] = forms.ModelMultipleChoiceField(label='Asignar a toda un área',
             queryset=Zone.objects.all(), required=False, widget=forms.CheckboxSelectMultiple,
-            help_text='Se añadirán los usuarios activos que pertenezcan al área al guardar.')
+            help_text='Los usuarios activos del área se incluyen como responsables. Desmarca el área para quitarlos de la selección automática.')
         names = list(self.fields)
         names.remove('assignee_areas')
         names.insert(names.index('assignees'), 'assignee_areas')
