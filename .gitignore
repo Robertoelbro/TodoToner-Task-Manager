@@ -32,3 +32,9 @@ Thumbs.db
 # Local deployment bundles and Vercel metadata
 *.zip
 .vercel/
+
+# Distribucion local Windows
+build/
+dist/
+datos/
+datos-locales/

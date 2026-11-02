@@ -230,3 +230,8 @@ La migración `accounts.0008_user_must_change_password_delete_recoveryrequest` a
 Gerencia abre Usuarios → trabajador → Generar nueva clave temporal. El POST exige CSRF y contraseña de gerencia; cada generación es nueva. Solo afecta cuentas activas no gerenciales y no reactiva cuentas pendientes de eliminación. La clave se entrega por un medio privado. El trabajador ingresa con ella y debe sustituirla antes de navegar. Los demás usuarios cambian su contraseña desde Mi perfil → Cambiar mi contraseña y confirman la actual. El cambio conserva la sesión actual e invalida otras sesiones.
 
 Se retiraron recuperación de usuario/contraseña por correo, formularios de códigos, servicio de correo, botón de pausa del hub y eliminación de tareas. Las rutas antiguas devuelven 404. El panel del hub muestra únicamente tareas vencidas; las próximas a vencer ya no aparecen en ese panel. Asistencia permanece sin ruta pública y su mockup usa solo Presente/No presente.
+
+
+## Copia ejecutable para Windows
+
+La distribución local y sus instrucciones de reconstrucción están en [desktop/README.md](desktop/README.md). Incluye un servidor local con Waitress y SQLite independiente de Vercel y Neon. La primera ejecución crea la cuenta gerencial; no se distribuyen datos ni credenciales reales.
