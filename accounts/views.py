@@ -39,16 +39,26 @@ def user_create(request):
     if not request.user.is_superuser:
         raise Http404
     from .forms import ManagedCreationForm
-    import secrets
-    from django.utils.text import slugify
+    from django.db import IntegrityError
+    from .usernames import username_candidates
     form = ManagedCreationForm(request.POST if request.method == 'POST' else None)
     if request.method == 'POST' and form.is_valid():
         user = form.save(commit=False)
-        user.username = (slugify(user.first_name + '.' + user.last_name)[:110] or 'usuario') + '-' + secrets.token_hex(4)
         password = user.issue_temporary_password()
         user.must_complete_profile = True
         user.is_superuser = user.is_supervisor = user.is_staff = False
-        user.save()
+        for candidate in username_candidates(user.first_name, user.last_name):
+            if User.objects.filter(username=candidate).exists():
+                continue
+            user.username = candidate
+            try:
+                with transaction.atomic():
+                    user.save(force_insert=True)
+            except IntegrityError:
+                if not User.objects.filter(username=candidate).exists():
+                    raise
+            else:
+                break
         # Se entrega solo en esta respuesta; nunca se guarda la contraseña en sesión o logs.
         return render(request, 'accounts/created.html', {'created_user': user, 'temporary_password': password})
     return render(request, 'accounts/create.html', {'form': form})
@@ -132,28 +142,34 @@ def profile(request):
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from .forms import DeletionConfirmationForm
-from .deletion import schedule_deletion, cancel_deletion
+from .deletion import schedule_deletion, cancel_deletion, delete_now
 
 
 @login_required
+@never_cache
+@sensitive_post_parameters('password')
 @require_http_methods(['GET', 'POST'])
-def user_deletion(request, pk, cancel=False):
+def user_deletion(request, pk, cancel=False, immediate=False):
     if not request.user.is_superuser:
         raise Http404
     target = get_object_or_404(User, pk=pk, is_superuser=False, deleted_at__isnull=True)
+    if immediate and not target.can_cancel_deletion:
+        raise Http404
     form = DeletionConfirmationForm(request.POST if request.method == 'POST' else None, actor=request.user)
     if request.method == 'POST' and form.is_valid():
         try:
-            if cancel:
+            if immediate:
+                delete_now(actor=request.user, target_id=pk)
+            elif cancel:
                 cancel_deletion(actor=request.user, target_id=pk)
             else:
                 schedule_deletion(actor=request.user, target_id=pk)
         except ValidationError as error:
             form.add_error(None, error)
         else:
-            messages.success(request, 'Eliminación cancelada.' if cancel else 'Eliminación programada; la cuenta quedó desactivada.')
+            messages.success(request, 'La cuenta se eliminó de la gestión. Sus tareas e historial se conservaron.' if immediate else ('Eliminación cancelada.' if cancel else 'Eliminación programada; la cuenta quedó desactivada.'))
             return redirect('users-manage')
-    return render(request, 'accounts/deletion.html', {'form': form, 'target_user': target, 'cancel': cancel})
+    return render(request, 'accounts/deletion.html', {'form': form, 'target_user': target, 'cancel': cancel, 'immediate': immediate})
 
 
 @login_required

@@ -51,6 +51,10 @@ button.danger:hover,.button.danger:hover{background:#991b1b;color:#fff;border-co
 .history-pagination{margin-top:14px}
 
 button.danger:disabled{background:#b95c5c;border-color:#b95c5c;color:#fff;cursor:not-allowed;opacity:.75}
+.topbar .profile-link{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:4px 6px;border-radius:8px;color:#fff}
+.profile-avatar{width:32px;height:32px;flex-shrink:0}
+.topbar .profile-link:hover{background:#244530}
+.profile-link span{overflow-wrap:anywhere}
 
 .monthly-goals{background:#e4f7e7;border:2px solid #15803d;border-left:7px solid #15803d;border-radius:14px;padding:16px 20px;margin-bottom:22px}
 .monthly-goals .section-heading{margin:0 0 12px}.monthly-goals h2{font-size:23px}.goals-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}.goal-card{background:#fff;border:1px solid #abd7b6;border-radius:9px;padding:14px;min-width:0;overflow-wrap:anywhere}.goal-card h3{margin:0 0 8px;font-size:19px}.goal-description{margin-bottom:12px;max-height:160px;overflow:auto}.goal-card .people{margin-top:10px}

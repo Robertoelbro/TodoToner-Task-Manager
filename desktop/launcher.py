@@ -1,4 +1,5 @@
-import argparse, json, logging, os, queue, secrets, sqlite3, sys, tempfile, threading, traceback, urllib.request, webbrowser, zipfile
+import argparse, json, logging, os, queue, secrets, sqlite3, sys, tempfile, threading, traceback, webbrowser, zipfile
+from http.client import HTTPConnection
 from pathlib import Path
 from datetime import datetime
 from contextlib import closing
@@ -59,7 +60,11 @@ def self_test(report):
         result['http'] = {}
         try:
             for path in ['/login/', '/static/app.css', '/static/people-search.js', '/static/brand/logo.png']:
-                with urllib.request.urlopen(f'http://127.0.0.1:{server.effective_port}'+path, timeout=15) as response: result['http'][path] = response.status
+                with closing(HTTPConnection('127.0.0.1', server.effective_port, timeout=15)) as connection:
+                    connection.request('GET', path)
+                    response = connection.getresponse()
+                    result['http'][path] = response.status
+                    response.read()
             backup(folder, folder/'respaldo.zip')
             with zipfile.ZipFile(folder/'respaldo.zip') as archive: result['backup'] = set(archive.namelist()) == {'plataforma.sqlite3', 'secret.key'}
         finally:

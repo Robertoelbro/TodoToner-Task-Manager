@@ -17,6 +17,7 @@ urlpatterns = [
     path('hora-servidor/', views.server_time, name='server-time'),
     path('usuarios/<int:pk>/eliminar/', user_deletion, name='user-delete'),
     path('usuarios/<int:pk>/cancelar-eliminacion/', user_deletion, {'cancel': True}, name='user-delete-cancel'),
+    path('usuarios/<int:pk>/eliminar-ahora/', user_deletion, {'immediate': True}, name='user-delete-now'),
     path('usuarios/', users_manage, name='users-manage'),
     path('usuarios/<int:pk>/', users_manage, name='user-edit'),
     path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html', authentication_form=AccountAuthenticationForm), name='login'),

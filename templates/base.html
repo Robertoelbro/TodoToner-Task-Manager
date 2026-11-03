@@ -4,7 +4,7 @@
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{% block title %}Turno · Actividades{% endblock %}</title>
 <link rel="icon" type="image/png" href="{% static 'brand/logo.png' %}">
-<link rel="stylesheet" href="{% static 'app.css' %}"><link rel="stylesheet" href="{% static 'server-clock.css' %}"><link rel="stylesheet" href="{% static 'accessibility.css' %}?v=20261023-3"><link rel="stylesheet" href="{% static 'loading.css' %}?v=20261027"></head>
+<link rel="stylesheet" href="{% static 'app.css' %}?v=20261103"><link rel="stylesheet" href="{% static 'server-clock.css' %}"><link rel="stylesheet" href="{% static 'accessibility.css' %}?v=20261023-3"><link rel="stylesheet" href="{% static 'loading.css' %}?v=20261027"></head>
 <body>
 <a class="skip-link" href="#main-content">Saltar al contenido principal</a>
 <header class="topbar"><a class="brand" href="{% url 'task-list' %}"><img class="brand-logo" src="{% static 'brand/logo.png' %}" alt="Todotoner"> <span>Todotoner</span></a>
@@ -13,7 +13,7 @@
 <a href="{% url 'task-list' %}">Hub principal</a><a href="{% url 'task-history' %}">Historial</a>
 <a href="{% url 'gantt' %}">{% if user.can_supervise %}Gantt{% else %}Mi Gantt{% endif %}</a>{% if user.can_supervise %}<a href="{% url 'tv-dashboard' %}">Dashboard TV</a>{% endif %}
 {% if user.is_superuser %}<a href="{% url 'users-manage' %}">Usuarios</a>{% endif %}
-<a class="identity" href="{% url 'profile' %}" title="Editar mi perfil">{{ user.display_name }} · {{ user.role_label }}</a>
+<a class="identity profile-link" href="{% url 'profile' %}" title="Editar mi perfil" aria-label="Editar mi perfil: {{ user.display_name }} · {{ user.role_label }}"><svg class="profile-avatar" viewBox="0 0 40 40" aria-hidden="true" focusable="false"><circle cx="20" cy="20" r="20" fill="#e6f4e9"/><circle cx="20" cy="14" r="7" fill="#166534"/><path d="M7 34a13 13 0 0 1 26 0" fill="#166534"/></svg><span>{{ user.display_name }} · {{ user.role_label }}</span></a>
 <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="secondary small">Salir</button></form>
 {% else %}<a href="{% url 'login' %}">Iniciar sesión</a>{% endif %}
 </nav>{% include 'server_clock.html' %}</header>

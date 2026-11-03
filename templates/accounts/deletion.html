@@ -1,4 +1,20 @@
-{% extends 'base.html' %}{% block content %}<section class="panel form-panel"><h1>{% if cancel %}Cancelar eliminación{% else %}Eliminar usuario{% endif %}</h1><h2>{{ target_user.display_name }}</h2>
-{% if cancel %}<p>Se restaurará el estado de acceso que tenía la cuenta antes de programar su eliminación.</p>
-{% else %}<p>La cuenta se desactivará inmediatamente y podrás cancelar durante cinco días hábiles, contados desde mañana a la misma hora. Se cuentan lunes a viernes, sin descontar feriados.</p><p>Al terminar el plazo, el usuario se retirará de la gestión. Sus tareas y registros históricos se conservarán; no se eliminarán en cascada.</p>{% endif %}
-<form method="post">{% csrf_token %}{% include 'fields.html' %}<button{% if not cancel %} class="danger"{% endif %}>{% if cancel %}Confirmar cancelación{% else %}Confirmar eliminación programada{% endif %}</button> <a href="{% url 'users-manage' %}">Volver sin cambios</a></form></section>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<section class="panel form-panel">
+<h1>{% if immediate %}Eliminar ahora{% elif cancel %}Cancelar eliminación{% else %}Eliminar usuario{% endif %}</h1>
+<h2>{{ target_user.display_name }}</h2>
+{% if immediate %}
+<p>La eliminación estaba programada para el {{ target_user.deletion_due_at|date:'d/m/Y H:i' }}.</p>
+<p><strong>La baja se completará ahora y ya no se podrá cancelar desde la plataforma.</strong> La cuenta seguirá desactivada y se retirará de la gestión de usuarios. Sus tareas y registros históricos se conservarán.</p>
+{% elif cancel %}
+<p>Se restaurará el estado de acceso que tenía la cuenta antes de programar su eliminación.</p>
+{% else %}
+<p>La cuenta se desactivará inmediatamente y podrás cancelar durante cinco días hábiles, contados desde mañana a la misma hora. Se cuentan lunes a viernes, sin descontar feriados.</p>
+<p>Al terminar el plazo, el usuario se retirará de la gestión. Sus tareas y registros históricos se conservarán; no se eliminarán en cascada.</p>
+{% endif %}
+<form method="post">{% csrf_token %}{% include 'fields.html' %}
+<button{% if not cancel %} class="danger"{% endif %}>{% if immediate %}Confirmar eliminación ahora{% elif cancel %}Confirmar cancelación{% else %}Confirmar eliminación programada{% endif %}</button>
+<a href="{% url 'users-manage' %}">Volver sin cambios</a>
+</form>
+</section>
+{% endblock %}

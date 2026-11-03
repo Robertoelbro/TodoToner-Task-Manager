@@ -235,3 +235,10 @@ Se retiraron recuperación de usuario/contraseña por correo, formularios de có
 ## Copia ejecutable para Windows
 
 La distribución local y sus instrucciones de reconstrucción están en [desktop/README.md](desktop/README.md). Incluye un servidor local con Waitress y SQLite independiente de Vercel y Neon. La primera ejecución crea la cuenta gerencial; no se distribuyen datos ni credenciales reales.
+
+
+## Cuentas y perfil de noviembre de 2026
+
+El enlace a Mi perfil muestra un avatar genérico junto al nombre y rol. Las nuevas cuentas generadas por gerencia usan las primeras cuatro letras del primer nombre, un punto y los apellidos normalizados: Roberto Orrego → robe.orrego. Los duplicados reciben un sufijo numérico desde 2; las cuentas existentes mantienen su usuario.
+
+En una eliminación programada, gerencia puede elegir Eliminar ahora y confirmar nuevamente con su contraseña. Completa la baja lógica de inmediato, sin permitir cancelación posterior desde la aplicación, y conserva tareas y referencias históricas. No admite cuentas gerenciales ni cuentas sin una baja pendiente. Estos cambios no requieren migraciones.

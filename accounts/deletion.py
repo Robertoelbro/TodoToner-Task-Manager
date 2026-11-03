@@ -57,6 +57,24 @@ def cancel_deletion(*, actor, target_id):
     return target
 
 
+@transaction.atomic
+def delete_now(*, actor, target_id):
+    require_management(actor)
+    target = User.objects.select_for_update().get(pk=target_id)
+    if target.is_superuser or target.pk == actor.pk:
+        raise PermissionDenied
+    if not target.can_cancel_deletion:
+        raise ValidationError('No existe una eliminación programada que se pueda adelantar.')
+    now = timezone.now()
+    target.deleted_at = now
+    target.deletion_due_at = now
+    target.deletion_requested_by = actor
+    target.is_active = False
+    target.onboarding_nonce = ''
+    target.save(update_fields=['deleted_at', 'deletion_due_at', 'deletion_requested_by', 'is_active', 'onboarding_nonce'])
+    return target
+
+
 class FinalizeDeletionMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
