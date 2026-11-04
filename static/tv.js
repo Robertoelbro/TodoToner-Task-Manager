@@ -5,7 +5,7 @@
  function showPause(){
    pauseButton.textContent=paused?'Reanudar actualizaciones':'Pausar actualizaciones';
    pauseButton.setAttribute('aria-pressed',String(paused));
-   feedback.textContent=paused?'Actualizaciones y rotación pausadas.':'Actualización cada 20 segundos · páginas de 6 tareas';
+   feedback.textContent=paused?'Actualizaciones y rotación pausadas.':'Actualización cada 20 segundos · hasta 2 tareas por columna';
  }
  showPause();
  document.getElementById("tv-pause").addEventListener("click", event=>{
@@ -29,7 +29,7 @@
      const html=await response.text();
      if(paused || content.contains(document.activeElement)) return;
      content.innerHTML=html;
-     feedback.textContent=paused?"Rotación pausada · datos actualizados":"Actualización cada 20 segundos · páginas de 6 tareas";
+     feedback.textContent=paused?"Rotación pausada · datos actualizados":"Actualización cada 20 segundos · hasta 2 tareas por columna";
    }catch{feedback.textContent="Sin actualización: revisa la conexión o la sesión. Los datos mostrados pueden estar desactualizados.";}
    finally{clearTimeout(timeout); loading=false;}
  }

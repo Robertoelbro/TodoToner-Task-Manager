@@ -6,7 +6,7 @@
       if (!control || control.dataset.searchReady) continue;
       control.dataset.searchReady = 'true';
       const single = control.tagName === 'SELECT';
-      const title = {id_assignees:'Responsables', id_spectators:'Quién puede visualizar mi tarea', id_worker:'Trabajador', id_supervisor:'Supervisor a cargo'}[id];
+      const title = {id_assignees:'Responsables', id_spectators:'Quién puede visualizar mi tarea', id_worker:'Responsable', id_supervisor:control.closest('.filter-field')?'Supervisor':'Supervisor a cargo'}[id];
       const wrapper = document.createElement('div'); wrapper.className = 'people-picker';
       const row = document.createElement('div'); row.className = 'people-picker-input';
       const input = document.createElement('input'); input.type = 'search'; input.id = id + '_search'; input.autocomplete = 'off';
@@ -26,7 +26,11 @@
         }
         const label = document.querySelector(`label[for="${id}"]`);
         if (label) {
-          if (id === 'id_supervisor' && !control.closest('.filter-field')) {
+          if (control.closest('.filter-field')) {
+            label.classList.remove('sr-only');
+            label.htmlFor = input.id;
+            label.textContent = title;
+          } else if (id === 'id_supervisor') {
             label.classList.remove('sr-only');
             label.htmlFor = input.id;
             label.textContent = 'Supervisor a cargo (opcional)';

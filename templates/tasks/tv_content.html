@@ -1,7 +1,31 @@
-<section class="tv-stats"><div><span>Tareas activas</span><strong>{{ active_count }}</strong></div><div class="critical"><span>Vencidas</span><strong>{{ urgent_count }}</strong></div><div class="warning"><span>Próximas a vencer</span><strong>{{ warning_count }}</strong></div></section>
-<div class="tv-caption"><span>Ordenadas por vencimiento</span><span>Última actualización: {{ updated_at|date:"d/m/Y H:i:s" }}</span><span id="tv-page" data-page="{{ page.number }}" data-pages="{{ page.paginator.num_pages }}">Página {{ page.number }} / {{ page.paginator.num_pages }}</span></div>
-<section class="tv-grid">{% for task in page %}<article class="tv-card urgency-{{ task.urgency }}"><div class="tv-card-head"><strong>{{ task.urgency_label }}</strong><span>{{ task.get_status_display }}</span></div><h2>{{ task.title }}</h2>
-<p class="people">{% for person in task.assignees.all %}{{ person.display_name }}{% if not forloop.last %} · {% endif %}{% empty %}Sin responsables{% endfor %}</p>
-<p class="zones">{% for zone in task.zones.all %}{{ zone.name }}{% if not forloop.last %} / {% endif %}{% empty %}Sin zona asignada{% endfor %}</p>
-<div class="tv-deadline"><span>Fecha límite</span><strong>{{ task.deadline|date:"d/m" }} · {{ task.deadline_time|time:"H:i" }}</strong></div><small>Prioridad {{ task.get_priority_display }} · Supervisor: {{ task.supervisor.display_name|default:"Sin asignar" }}</small>
-</article>{% empty %}<div class="tv-empty"><h2>Sin tareas activas</h2><p>Las nuevas tareas aparecerán aquí automáticamente.</p></div>{% endfor %}</section>
+<section class="tv-stats" aria-label="Resumen de tareas activas">
+  <div><span>Tareas activas</span><strong>{{ active_count }}</strong></div>
+  <div class="warning"><span>Próximas a vencer</span><strong>{{ warning_count }}</strong></div>
+  <div class="critical"><span>Vencidas</span><strong>{{ urgent_count }}</strong></div>
+</section>
+<div class="tv-caption">
+  <span>Agrupadas por plazo · cada columna rota sus tareas por fecha límite</span>
+  <span>Última actualización: {{ updated_at|date:"d/m/Y H:i:s" }}</span>
+  <span id="tv-page" data-page="{{ page.number }}" data-pages="{{ page.paginator.num_pages }}">Vista {{ page.number }} / {{ page.paginator.num_pages }}</span>
+</div>
+{% if not active_count %}<p class="tv-empty">Sin tareas activas. Las nuevas tareas aparecerán aquí automáticamente.</p>{% endif %}
+<div class="tv-grid">
+  {% for column in columns %}
+  <section class="tv-column urgency-{{ column.key }}" aria-labelledby="tv-column-{{ column.key }}">
+    <div class="tv-column-heading"><h2 id="tv-column-{{ column.key }}">{{ column.title }}</h2><span class="tv-column-count">{{ column.count }} tarea{{ column.count|pluralize }}</span></div>
+    <div class="tv-column-cards">
+      {% for task in column.page %}
+      <article class="tv-card urgency-{{ column.key }}">
+        <div class="tv-card-head"><strong>{{ column.title }}</strong><span>{{ task.get_status_display }}</span></div>
+        <h3>{{ task.title }}</h3>
+        <p class="people">{% for person in task.assignees.all %}{{ person.display_name }}{% if not forloop.last %} · {% endif %}{% empty %}Sin responsables{% endfor %}</p>
+        <p class="zones">{% for zone in task.zones.all %}{{ zone.name }}{% if not forloop.last %} / {% endif %}{% empty %}Sin zona asignada{% endfor %}</p>
+        <div class="tv-deadline"><span>Fecha límite</span><strong>{{ task.deadline|date:"d/m/Y" }} · {{ task.deadline_time|time:"H:i" }}</strong></div>
+        <small>Prioridad {{ task.get_priority_display }} · Supervisor: {{ task.supervisor.display_name|default:"Sin asignar" }}</small>
+      </article>
+      {% empty %}<p class="tv-column-empty">No hay tareas {{ column.title|lower }}.</p>{% endfor %}
+    </div>
+    {% if column.page.has_other_pages %}<p class="tv-column-page">Página {{ column.page.number }} / {{ column.page.paginator.num_pages }}</p>{% endif %}
+  </section>
+  {% endfor %}
+</div>

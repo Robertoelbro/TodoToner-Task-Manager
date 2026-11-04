@@ -225,11 +225,20 @@ def tv_dashboard(request):
     tasks = list(visible_tasks(request.user).exclude(status=Task.Status.COMPLETED))
     tasks.sort(key=lambda task: (task.ends_at, task.pk))
     now = timezone.now()
-    page = Paginator(tasks, 6).get_page(request.GET.get('page', 1))
+    columns = []
+    for key, title in (('green', 'En plazo'), ('yellow', 'Próximas a vencer'), ('overdue', 'Vencidas')):
+        items = [task for task in tasks if task.urgency_at(now) == key]
+        columns.append({'key': key, 'title': title, 'count': len(items),
+                        'paginator': Paginator(items, 2)})
+    # Each column rotates independently, keeping short groups visible on every screen.
+    page_count = max(column['paginator'].num_pages for column in columns)
+    page = Paginator(range(page_count), 1).get_page(request.GET.get('page', 1))
+    for column in columns:
+        column['page'] = column['paginator'].page((page.number - 1) % column['paginator'].num_pages + 1)
     context = {
-        'page': page, 'active_count': len(tasks),
-        'urgent_count': sum(t.urgency_at(now) == 'overdue' for t in tasks),
-        'warning_count': sum(t.urgency_at(now) == 'yellow' for t in tasks),
+        'page': page, 'columns': columns, 'active_count': len(tasks),
+        'urgent_count': columns[2]['count'],
+        'warning_count': columns[1]['count'],
         'updated_at': now,
     }
     fragment = request.headers.get('X-Requested-With') == 'XMLHttpRequest'

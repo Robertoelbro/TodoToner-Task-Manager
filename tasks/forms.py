@@ -152,13 +152,13 @@ class TaskTrackingForm(ScheduleValidationMixin, forms.ModelForm):
 
 class DashboardFilterForm(forms.Form):
     zone = forms.ModelChoiceField(label='Zona', queryset=Zone.objects.all(), required=False, empty_label='Todas las zonas')
-    worker = forms.ModelChoiceField(label='Trabajador', queryset=User.objects.filter(deleted_at__isnull=True).order_by('first_name', 'username'), required=False, empty_label='Todos los trabajadores')
+    worker = forms.ModelChoiceField(label='Responsable', queryset=User.objects.filter(deleted_at__isnull=True).order_by('first_name', 'username'), required=False, empty_label='Todos los responsables')
     month = forms.TypedChoiceField(label='Mes', required=False, coerce=int, empty_value=None,
         choices=[('', 'Todos los meses')] + list(enumerate(['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'], 1)))
     year = forms.IntegerField(label='Año', required=False, min_value=1900, max_value=9998,
         widget=forms.Select(choices=[('', 'Todos los años')] + [(year, year) for year in range(2000, 2101)]))
     priority = forms.ChoiceField(label='Prioridad', required=False, choices=[('', 'Todas las prioridades')] + list(Task.Priority.choices))
-    supervisor = forms.ModelChoiceField(label='Supervisor a cargo', queryset=User.objects.filter(is_supervisor=True, deleted_at__isnull=True).order_by('first_name', 'username'), required=False, empty_label='Todos los supervisores')
+    supervisor = forms.ModelChoiceField(label='Supervisor', queryset=User.objects.filter(is_supervisor=True, deleted_at__isnull=True).order_by('first_name', 'username'), required=False, empty_label='Todos los supervisores')
     status = forms.ChoiceField(label='Estado', required=False, choices=[('', 'Todos los estados')] + list(Task.Status.choices))
     multiple = forms.BooleanField(label='Más de un responsable', required=False)
 

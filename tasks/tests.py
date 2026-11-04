@@ -468,14 +468,52 @@ class TVTests(TestCase):
         self.client.force_login(self.boss)
         response = self.client.get(reverse('tv-dashboard'))
         self.assertEqual(response.context['active_count'], 8)
-        self.assertEqual(len(response.context['page']), 6)
+        self.assertEqual(response.context['page'].paginator.num_pages, 4)
+        self.assertEqual(len(response.context['columns'][0]['page']), 2)
         self.assertContains(response, 'Pantalla completa')
         self.assertNotContains(response, 'No mostrar finalizada')
         response = self.client.get(reverse('tv-dashboard'), {'page': 2}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-        self.assertEqual(len(response.context['page']), 2)
+        self.assertEqual(len(response.context['columns'][0]['page']), 2)
         self.assertEqual(response['X-Turno-Fragment'], 'tv')
         self.assertNotContains(response, '<!doctype html>')
         self.assertEqual(self.client.get(reverse('tv-dashboard'), {'page': 'invalid'}).status_code, 200)
+
+    def test_columns_follow_deadlines_and_rotate_without_hiding_short_groups(self):
+        Task.objects.all().delete()
+        now = timezone.localtime().replace(hour=12, minute=0, second=0, microsecond=0)
+
+        def scheduled(title, start_hour, end_hour, priority):
+            task = Task.objects.create(title=title, created_by=self.worker,
+                start_date=now.date(), start_time=now.replace(hour=start_hour).time(),
+                deadline=now.date(), deadline_time=now.replace(hour=end_hour).time(), priority=priority)
+            task.assignees.add(self.worker)
+            return task
+
+        green = scheduled('En plazo con prioridad alta', 11, 15, Task.Priority.HIGH)
+        yellow = scheduled('Exactamente 75 por ciento', 9, 13, Task.Priority.LOW)
+        overdue = [scheduled(f'Vencida {index}', 8, 12, Task.Priority.MEDIUM) for index in range(5)]
+        self.client.force_login(self.boss)
+        with patch('tasks.views.timezone.now', return_value=now):
+            response = self.client.get(reverse('tv-dashboard'), {'page': 3})
+        columns = response.context['columns']
+        self.assertEqual([c['key'] for c in columns], ['green', 'yellow', 'overdue'])
+        self.assertEqual([c['count'] for c in columns], [1, 1, 5])
+        self.assertEqual(list(columns[0]['page']), [green])
+        self.assertEqual(list(columns[1]['page']), [yellow])
+        self.assertEqual(list(columns[2]['page']), overdue[4:])
+        self.assertEqual(response.context['page'].paginator.num_pages, 3)
+        self.assertEqual(response.context['urgent_count'], 5)
+        self.assertEqual(response.context['warning_count'], 1)
+        for title in ('En plazo', 'Próximas a vencer', 'Vencidas'):
+            self.assertContains(response, title)
+
+    def test_filter_labels_identify_responsible_and_supervisor(self):
+        self.client.force_login(self.boss)
+        for route in ('gantt', 'task-history'):
+            response = self.client.get(reverse(route))
+            self.assertEqual(response.context['filter_form'].fields['worker'].label, 'Responsable')
+            self.assertContains(response, '<label for="id_worker">Responsable</label>', html=True)
+        self.assertEqual(self.client.get(reverse('gantt')).context['filter_form'].fields['supervisor'].label, 'Supervisor')
 
     def test_empty_screen(self):
         Task.objects.update(status=Task.Status.COMPLETED)
