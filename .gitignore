@@ -38,6 +38,3 @@ build/
 dist/
 datos/
 datos-locales/
-
-# Configuración privada de la copia Replit
-.replit-local/
