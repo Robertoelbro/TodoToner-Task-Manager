@@ -100,4 +100,3 @@ main a:not(.button):not(.gantt-bar) {text-decoration:underline;text-underline-of
 
 .people-picker-popup {position:absolute;z-index:30;left:0;right:0;top:2.75rem;box-shadow:0 5px 15px #0002}
 .people-picker-popup select {height:auto;min-height:4rem}
-.filter-field:has(.people-picker) .people-picker {margin-top:1.25rem}

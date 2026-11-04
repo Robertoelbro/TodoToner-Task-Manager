@@ -1,0 +1,17 @@
+run = "python scripts/replit_start.py"
+modules = ["python-3.12", "web"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[workflows]
+runButton = "Todotoner"
+
+[[workflows.workflow]]
+name = "Todotoner"
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python scripts/replit_start.py"
