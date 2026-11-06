@@ -20,6 +20,7 @@ urlpatterns = [
     path('usuarios/<int:pk>/eliminar-ahora/', user_deletion, {'immediate': True}, name='user-delete-now'),
     path('usuarios/', users_manage, name='users-manage'),
     path('usuarios/<int:pk>/', users_manage, name='user-edit'),
+    path('usuarios/<int:pk>/acceso-correo/', account_views.email_access, name='user-email-access'),
     path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html', authentication_form=AccountAuthenticationForm), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('registro/', register, name='register'),

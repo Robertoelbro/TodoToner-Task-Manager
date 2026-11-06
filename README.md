@@ -245,7 +245,7 @@ En una eliminación programada, gerencia puede elegir Eliminar ahora y confirmar
 
 ## Acceso opcional con correo electrónico
 
-Gerencia puede habilitar **Permitir ingresar con correo electrónico** desde Usuarios → Editar usuario. El trabajador debe tener un correo válido y exclusivo registrado en su perfil. Al habilitarlo, puede entrar tanto con el correo (sin distinguir mayúsculas) como con su nombre de usuario y la misma contraseña. Al deshabilitarlo, conserva el acceso con su nombre de usuario.
+Gerencia puede habilitar **Permitir ingresar con correo electrónico** desde Usuarios → Editar usuario. Para cuentas de gerencia, se usa **Configurar acceso**, sin cambiar sus privilegios. El usuario debe tener un correo válido y exclusivo registrado en su perfil. Al habilitarlo, puede entrar tanto con el correo (sin distinguir mayúsculas) como con su nombre de usuario y la misma contraseña. Al deshabilitarlo, conserva el acceso con su nombre de usuario.
 
 Las cuentas existentes comienzan con la opción deshabilitada. Las cuentas desactivadas o pendientes de eliminación siguen bloqueadas y el cambio de contraseña obligatorio se conserva. Los trabajadores no pueden habilitar la opción desde su perfil. No se envían correos ni se reactiva recuperación por correo.
 

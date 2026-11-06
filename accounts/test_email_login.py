@@ -126,3 +126,42 @@ class EmailLoginTests(TestCase):
                             'Permitir ingresar con correo electrónico')
         self.client.logout()
         self.assertContains(self.client.get(reverse('login')), 'Nombre de usuario o correo electrónico')
+
+    def test_management_can_enable_own_email_without_changing_privileges(self):
+        self.boss.email = 'boss@example.com'
+        self.boss.save(update_fields=['email'])
+        self.client.force_login(self.boss)
+        response = self.client.post(reverse('user-email-access', args=[self.boss.pk]), {
+            'allow_email_login': 'on', 'role': 'base', 'is_superuser': '', 'email': 'tampered@example.com'})
+        self.assertRedirects(response, reverse('users-manage'))
+        self.boss.refresh_from_db()
+        self.assertTrue(self.boss.allow_email_login)
+        self.assertTrue(self.boss.is_superuser)
+        self.assertTrue(self.boss.is_staff)
+        self.assertEqual(self.boss.email, 'boss@example.com')
+        self.assertEqual(authenticate(username='BOSS@example.com', password='boss-123'), self.boss)
+        self.assertEqual(self.client.get(reverse('user-edit', args=[self.boss.pk])).status_code, 404)
+
+    def test_management_can_configure_another_management_account(self):
+        other = User.objects.create_superuser(username='other-boss', email='other@example.com', password='other-123')
+        self.client.force_login(self.boss)
+        self.assertContains(self.client.get(reverse('users-manage')), reverse('user-email-access', args=[other.pk]))
+        self.client.post(reverse('user-email-access', args=[other.pk]), {'allow_email_login': 'on', 'is_supervisor': 'on'})
+        other.refresh_from_db()
+        self.assertTrue(other.allow_email_login)
+        self.assertTrue(other.is_superuser)
+        self.assertFalse(other.is_supervisor)
+
+    def test_workers_cannot_use_the_separate_access_settings_view(self):
+        self.client.force_login(self.worker)
+        response = self.client.post(reverse('user-email-access', args=[self.worker.pk]), {'allow_email_login': 'on'})
+        self.assertEqual(response.status_code, 404)
+        self.worker.refresh_from_db()
+        self.assertFalse(self.worker.allow_email_login)
+
+    def test_access_settings_rejects_accounts_pending_deletion(self):
+        self.worker.deletion_due_at = timezone.now() + timedelta(days=5)
+        self.worker.save(update_fields=['deletion_due_at'])
+        self.client.force_login(self.boss)
+        response = self.client.post(reverse('user-email-access', args=[self.worker.pk]), {'allow_email_login': 'on'})
+        self.assertEqual(response.status_code, 404)

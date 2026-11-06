@@ -1,0 +1,7 @@
+{% extends 'base.html' %}{% block title %}Configurar acceso · Todotoner{% endblock %}
+{% block content %}<section class="panel form-panel">
+<h1>Configurar acceso</h1><h2>{{ target_user.display_name }}</h2>
+<p>{{ target_user.email|default:'Correo pendiente de registrar' }}</p>
+<p class="help">El correo se registra o actualiza desde Mi perfil. Esta opción conserva el nombre de usuario y los permisos de la cuenta.</p>
+<form method="post">{% csrf_token %}{% include 'fields.html' %}<button>Guardar cambios</button> <a href="{% url 'users-manage' %}">Cancelar</a></form>
+</section>{% endblock %}

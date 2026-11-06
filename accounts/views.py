@@ -120,6 +120,24 @@ def users_manage(request, pk=None):
     })
 
 
+@login_required
+@never_cache
+@require_http_methods(['GET', 'POST'])
+@transaction.atomic
+def email_access(request, pk):
+    if not request.user.is_superuser:
+        raise Http404
+    from .forms import EmailAccessForm
+    target = get_object_or_404(User.objects.select_for_update(), pk=pk,
+                              deleted_at__isnull=True, deletion_due_at__isnull=True)
+    form = EmailAccessForm(request.POST if request.method == 'POST' else None, instance=target)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, 'Opción de acceso actualizada.')
+        return redirect('users-manage')
+    return render(request, 'accounts/email_access.html', {'form': form, 'target_user': target})
+
+
 def not_found(request, exception=None):
     return render(request, '404.html', status=404)
 

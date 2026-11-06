@@ -30,6 +30,19 @@ class RegistrationForm(UniqueEmailMixin, UserCreationForm):
 
 
 
+def validate_email_login_permission(user, allowed):
+    if allowed:
+        email = user.email.strip()
+        try:
+            forms.EmailField(required=True).clean(email)
+        except forms.ValidationError:
+            raise forms.ValidationError('El trabajador debe registrar un correo válido en su perfil antes de habilitar esta opción.')
+        others = User.objects.exclude(pk=user.pk)
+        if others.filter(email__iexact=email).exists() or others.filter(username__iexact=email).exists():
+            raise forms.ValidationError('Este correo coincide con otra cuenta. Corrígelo antes de habilitar el acceso.')
+    return allowed
+
+
 class ManagedUserForm(forms.ModelForm):
     role = forms.ChoiceField(label='Rol', choices=[('base', 'Usuario base'), ('supervisor', 'Supervisor'), ('management', 'Gerencia')])
     class Meta:
@@ -44,17 +57,7 @@ class ManagedUserForm(forms.ModelForm):
         self.fields['role'].initial = 'management' if self.instance.is_superuser else ('supervisor' if self.instance.is_supervisor else 'base')
 
     def clean_allow_email_login(self):
-        allowed = self.cleaned_data['allow_email_login']
-        if allowed:
-            email = self.instance.email.strip()
-            try:
-                forms.EmailField(required=True).clean(email)
-            except forms.ValidationError:
-                raise forms.ValidationError('El trabajador debe registrar un correo válido en su perfil antes de habilitar esta opción.')
-            others = User.objects.exclude(pk=self.instance.pk)
-            if others.filter(email__iexact=email).exists() or others.filter(username__iexact=email).exists():
-                raise forms.ValidationError('Este correo coincide con otra cuenta. Corrígelo antes de habilitar el acceso.')
-        return allowed
+        return validate_email_login_permission(self.instance, self.cleaned_data['allow_email_login'])
 
     def save(self, commit=True):
         user = super().save(commit=False)
@@ -64,6 +67,16 @@ class ManagedUserForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class EmailAccessForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ('allow_email_login',)
+        help_texts = {'allow_email_login': 'También podrá seguir ingresando con su nombre de usuario.'}
+
+    def clean_allow_email_login(self):
+        return validate_email_login_permission(self.instance, self.cleaned_data['allow_email_login'])
 
 
 class ManagedCreationForm(forms.ModelForm):
