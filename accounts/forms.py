@@ -13,6 +13,9 @@ class UniqueEmailMixin:
             users = users.exclude(pk=self.instance.pk)
         if users.exists():
             raise forms.ValidationError('Este correo ya está asociado a otra cuenta.')
+        if (self.instance.allow_email_login
+                and User.objects.filter(username__iexact=email).exclude(pk=self.instance.pk).exists()):
+            raise forms.ValidationError('Este correo coincide con el nombre de usuario de otra cuenta.')
         return email
 
 
@@ -31,13 +34,27 @@ class ManagedUserForm(forms.ModelForm):
     role = forms.ChoiceField(label='Rol', choices=[('base', 'Usuario base'), ('supervisor', 'Supervisor'), ('management', 'Gerencia')])
     class Meta:
         model = User
-        fields = ('area',)
+        fields = ('area', 'allow_email_login')
         labels = {'is_supervisor': 'Puede supervisar y reasignar tareas'}
+        help_texts = {'allow_email_login': 'También podrá seguir ingresando con su nombre de usuario.'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['area'].required = True
         self.fields['role'].initial = 'management' if self.instance.is_superuser else ('supervisor' if self.instance.is_supervisor else 'base')
+
+    def clean_allow_email_login(self):
+        allowed = self.cleaned_data['allow_email_login']
+        if allowed:
+            email = self.instance.email.strip()
+            try:
+                forms.EmailField(required=True).clean(email)
+            except forms.ValidationError:
+                raise forms.ValidationError('El trabajador debe registrar un correo válido en su perfil antes de habilitar esta opción.')
+            others = User.objects.exclude(pk=self.instance.pk)
+            if others.filter(email__iexact=email).exists() or others.filter(username__iexact=email).exists():
+                raise forms.ValidationError('Este correo coincide con otra cuenta. Corrígelo antes de habilitar el acceso.')
+        return allowed
 
     def save(self, commit=True):
         user = super().save(commit=False)

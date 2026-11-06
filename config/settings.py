@@ -12,7 +12,7 @@ SECRET_KEY = env('DJANGO_SECRET_KEY')
 DEBUG = False if ON_VERCEL else env('DJANGO_DEBUG')
 ALLOWED_HOSTS = env.list('DJANGO_ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 if ON_VERCEL:
-    for name in ('VERCEL_URL', 'VERCEL_PROJECT_PRODUCTION_URL'):
+    for name in ('VERCEL_URL', 'VERCEL_BRANCH_URL', 'VERCEL_PROJECT_PRODUCTION_URL'):
         host = os.environ.get(name)
         if host and host not in ALLOWED_HOSTS:
             ALLOWED_HOSTS.append(host)
@@ -55,6 +55,7 @@ if ON_VERCEL:
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 AUTH_USER_MODEL = 'accounts.User'
+AUTHENTICATION_BACKENDS = ['accounts.authentication.EmailOrUsernameBackend']
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
      'OPTIONS': {'min_length': 5}},

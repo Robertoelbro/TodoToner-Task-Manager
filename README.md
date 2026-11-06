@@ -242,3 +242,11 @@ La distribución local y sus instrucciones de reconstrucción están en [desktop
 El enlace a Mi perfil muestra un avatar genérico junto al nombre y rol. Las nuevas cuentas generadas por gerencia usan las primeras cuatro letras del primer nombre, un punto y los apellidos normalizados: Roberto Orrego → robe.orrego. Los duplicados reciben un sufijo numérico desde 2; las cuentas existentes mantienen su usuario.
 
 En una eliminación programada, gerencia puede elegir Eliminar ahora y confirmar nuevamente con su contraseña. Completa la baja lógica de inmediato, sin permitir cancelación posterior desde la aplicación, y conserva tareas y referencias históricas. No admite cuentas gerenciales ni cuentas sin una baja pendiente. Estos cambios no requieren migraciones.
+
+## Acceso opcional con correo electrónico
+
+Gerencia puede habilitar **Permitir ingresar con correo electrónico** desde Usuarios → Editar usuario. El trabajador debe tener un correo válido y exclusivo registrado en su perfil. Al habilitarlo, puede entrar tanto con el correo (sin distinguir mayúsculas) como con su nombre de usuario y la misma contraseña. Al deshabilitarlo, conserva el acceso con su nombre de usuario.
+
+Las cuentas existentes comienzan con la opción deshabilitada. Las cuentas desactivadas o pendientes de eliminación siguen bloqueadas y el cambio de contraseña obligatorio se conserva. Los trabajadores no pueden habilitar la opción desde su perfil. No se envían correos ni se reactiva recuperación por correo.
+
+Aplicar `python manage.py migrate` antes del despliegue: incluye `accounts.0009_user_allow_email_login`. El cambio del backend de autenticación requiere volver a iniciar sesión una vez tras actualizar. No agrega dependencias.

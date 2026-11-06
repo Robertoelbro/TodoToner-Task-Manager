@@ -7,6 +7,7 @@ class User(AbstractUser):
                              related_name='members', verbose_name='Área')
     must_complete_profile = models.BooleanField(default=False)
     must_change_password = models.BooleanField(default=False)
+    allow_email_login = models.BooleanField('Permitir ingresar con correo electrónico', default=False)
     onboarding_nonce = models.CharField(max_length=64, blank=True, editable=False)
 
     def issue_temporary_password(self):

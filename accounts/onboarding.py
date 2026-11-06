@@ -1,16 +1,21 @@
+from django import forms
 from django.contrib.auth import logout
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, UsernameField
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import resolve, Resolver404
 from .models import User
+from .authentication import find_login_user
 
 
 class AccountAuthenticationForm(AuthenticationForm):
+    username = UsernameField(label='Nombre de usuario o correo electrónico', max_length=254,
+                             widget=forms.TextInput(attrs={'autofocus': True, 'autocomplete': 'username'}))
+
     def clean(self):
         username, password = self.cleaned_data.get('username'), self.cleaned_data.get('password')
         if username and password:
-            user = User.objects.filter(username=username).first()
+            user = find_login_user(username)
             if user and (not user.is_active or user.deletion_due_at or user.deleted_at) and user.check_password(password):
                 raise ValidationError('Cuenta desactivada. Contacta a gerencia.', code='inactive')
         return super().clean()
