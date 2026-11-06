@@ -140,12 +140,12 @@ class EmailLoginTests(TestCase):
         self.assertTrue(self.boss.is_staff)
         self.assertEqual(self.boss.email, 'boss@example.com')
         self.assertEqual(authenticate(username='BOSS@example.com', password='boss-123'), self.boss)
-        self.assertEqual(self.client.get(reverse('user-edit', args=[self.boss.pk])).status_code, 404)
+        self.assertEqual(self.client.get(reverse('user-edit', args=[self.boss.pk])).status_code, 200)
 
     def test_management_can_configure_another_management_account(self):
         other = User.objects.create_superuser(username='other-boss', email='other@example.com', password='other-123')
         self.client.force_login(self.boss)
-        self.assertContains(self.client.get(reverse('users-manage')), reverse('user-email-access', args=[other.pk]))
+        self.assertContains(self.client.get(reverse('users-manage')), reverse('user-edit', args=[other.pk]))
         self.client.post(reverse('user-email-access', args=[other.pk]), {'allow_email_login': 'on', 'is_supervisor': 'on'})
         other.refresh_from_db()
         self.assertTrue(other.allow_email_login)

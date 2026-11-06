@@ -66,7 +66,7 @@ Gerencia corresponde a is_superuser de Django y también puede supervisar tareas
 .\.venv\Scripts\python.exe manage.py createsuperuser
 ```
 
-Iniciar sesión en /login/ y abrir Usuarios (/usuarios/). Gerencia crea cuentas y edita únicamente área y rol de las cuentas no gerenciales que completaron su primer ingreso. Puede promoverlas a supervisor o gerencia. Las cuentas gerenciales quedan protegidas contra edición y eliminación desde esta vista. El perfil personal no permite cambiar área ni privilegios.
+Iniciar sesión en /login/ y abrir Usuarios (/usuarios/). Gerencia crea cuentas y edita área, rol y acceso con correo de las cuentas que completaron su primer ingreso, incluidas las cuentas de gerencia y la propia. Puede promoverlas o retirarles el rol gerencial, siempre que quede al menos una gerencia activa. Las cuentas gerenciales no se eliminan desde esta vista. El perfil personal no permite cambiar área ni privilegios.
 
 Django Admin está deshabilitado: no existe la ruta /admin/. Las rutas inexistentes y los intentos sin permiso de acceder a gestión muestran un 404 personalizado sin listar rutas, incluso con DEBUG=True. DEBUG=False sigue siendo necesario en producción para evitar otras páginas técnicas de error.
 
@@ -219,7 +219,7 @@ Aplicar `python manage.py migrate` antes de iniciar esta versión. Incluye tarea
 - Reemplaza los umbrales anteriores: hasta consumir el 75% del intervalo inicio-límite, verde; desde el 75% y antes de vencer, amarillo; al vencer, rojo. Las finalizadas no generan alertas. La regla se aplica a intervalos cortos y largos, en el servidor y en pantalla.
 - Perfil permite editar datos propios y cambiar la contraseña dentro de la sesión. La recuperación por correo se retiró por completo.
 - Mientras el primer ingreso esté pendiente, seleccionar un usuario desde gerencia muestra usuario y contraseña temporal. Las cuentas anteriores sin nonce requieren generar explícitamente una nueva contraseña temporal; los hashes antiguos no se pueden recuperar. El primer ingreso borra el nonce. La desactivación también lo borra. La consulta exige gerencia y respuestas sin caché; las cuentas pendientes no admiten edición de rol/área en esa pantalla.
-- Después del primer ingreso, gerencia solo cambia rol o área; nombres, correo y contraseña enviados artificialmente al formulario se ignoran. La protección de cuentas gerenciales se mantiene.
+- Después del primer ingreso, gerencia cambia rol, área y permiso de acceso con correo, incluidas cuentas gerenciales; nombres, correo y contraseña enviados artificialmente al formulario se ignoran. No se permite retirar el rol a la última gerencia activa. Si alguien retira su propio rol y queda otra gerencia activa, vuelve al hub y pierde acceso a la gestión de usuarios.
 
 Esta versión requiere `python manage.py migrate` (accounts.0007_user_onboarding_nonce) antes de servirla. No agrega dependencias.
 
@@ -245,7 +245,7 @@ En una eliminación programada, gerencia puede elegir Eliminar ahora y confirmar
 
 ## Acceso opcional con correo electrónico
 
-Gerencia puede habilitar **Permitir ingresar con correo electrónico** desde Usuarios → Editar usuario. Para cuentas de gerencia, se usa **Configurar acceso**, sin cambiar sus privilegios. El usuario debe tener un correo válido y exclusivo registrado en su perfil. Al habilitarlo, puede entrar tanto con el correo (sin distinguir mayúsculas) como con su nombre de usuario y la misma contraseña. Al deshabilitarlo, conserva el acceso con su nombre de usuario.
+Gerencia puede habilitar **Permitir ingresar con correo electrónico** desde Usuarios → Editar usuario. Las cuentas de gerencia también tienen **Editar usuario**, con los mismos campos de rol, área y acceso con correo. La ruta anterior de Configurar acceso sigue siendo compatible. El usuario debe tener un correo válido y exclusivo registrado en su perfil. Al habilitarlo, puede entrar tanto con el correo (sin distinguir mayúsculas) como con su nombre de usuario y la misma contraseña. Al deshabilitarlo, conserva el acceso con su nombre de usuario.
 
 Las cuentas existentes comienzan con la opción deshabilitada. Las cuentas desactivadas o pendientes de eliminación siguen bloqueadas y el cambio de contraseña obligatorio se conserva. Los trabajadores no pueden habilitar la opción desde su perfil. No se envían correos ni se reactiva recuperación por correo.
 

@@ -97,8 +97,13 @@ def complete_profile(request):
 def users_manage(request, pk=None):
     if not request.user.is_superuser:
         raise Http404
-    # Gerencia no cambia sus propios privilegios ni los de otra cuenta gerencial.
-    target = get_object_or_404(User.objects.select_for_update(), pk=pk, is_superuser=False, deleted_at__isnull=True, deletion_due_at__isnull=True) if pk is not None else None
+    if pk is not None:
+        # Serializar cambios de rol para conservar al menos una gerencia activa.
+        managers = list(User.objects.select_for_update().filter(is_superuser=True)
+                        .order_by('pk').values_list('pk', flat=True))
+        if request.user.pk not in managers:
+            raise Http404
+    target = get_object_or_404(User.objects.select_for_update(), pk=pk, deleted_at__isnull=True, deletion_due_at__isnull=True) if pk is not None else None
     if target and (target.must_complete_profile or target.must_change_password):
         password = target.temporary_password
         return render(request, 'accounts/pending_credentials.html', {'target_user': target, 'temporary_password': password})
@@ -107,9 +112,9 @@ def users_manage(request, pk=None):
         if target is None:
             raise Http404
         if form.is_valid():
-            form.save()
+            updated_user = form.save()
             messages.success(request, 'Usuario actualizado.')
-            return redirect('users-manage')
+            return redirect('task-list' if updated_user.pk == request.user.pk and not updated_user.is_superuser else 'users-manage')
     if target is None and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         response = render(request, 'accounts/people.html', {'people': filter_people(request.GET.get('q', ''))})
         response['X-Turno-Fragment'] = 'users'

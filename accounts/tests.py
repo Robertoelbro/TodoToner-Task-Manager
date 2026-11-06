@@ -75,12 +75,17 @@ class ManagementTests(TestCase):
         self.assertFalse(self.worker.is_staff)
         self.assertFalse(self.worker.check_password('tampered'))
 
-    def test_management_can_remove_supervision_but_not_edit_management(self):
+    def test_management_can_remove_supervision_and_edit_management(self):
         self.client.force_login(self.boss)
         self.client.post(reverse('user-edit', args=[self.supervisor.pk]), {'first_name':'Laura','last_name':'Soto','email':'', 'role':'base', 'area': self.area.pk})
         self.supervisor.refresh_from_db()
         self.assertFalse(self.supervisor.is_supervisor)
-        self.assertEqual(self.client.post(reverse('user-edit', args=[self.boss.pk]), {}).status_code, 404)
+        response = self.client.post(reverse('user-edit', args=[self.boss.pk]),
+                                    {'role': 'management', 'area': self.area.pk})
+        self.assertRedirects(response, reverse('users-manage'))
+        self.boss.refresh_from_db()
+        self.assertEqual(self.boss.area, self.area)
+        self.assertTrue(self.boss.is_superuser)
 
     def test_management_can_promote_base_or_supervisor_to_management(self):
         self.client.force_login(self.boss)
@@ -92,7 +97,59 @@ class ManagementTests(TestCase):
             self.assertTrue(target.is_superuser)
             self.assertTrue(target.is_staff)
             self.assertFalse(target.is_supervisor)
-            self.assertEqual(self.client.get(reverse('user-edit', args=[target.pk])).status_code, 404)
+            self.assertEqual(self.client.get(reverse('user-edit', args=[target.pk])).status_code, 200)
+
+    def test_management_can_change_another_managers_role(self):
+        other = User.objects.create_superuser(username='other-boss', password='Test-pass-9417!')
+        self.client.force_login(self.boss)
+        self.assertContains(self.client.get(reverse('users-manage')), reverse('user-edit', args=[other.pk]))
+        response = self.client.post(reverse('user-edit', args=[other.pk]), {
+            'role': 'supervisor', 'area': self.area.pk, 'first_name': 'Ignored', 'password': 'Ignored'})
+        self.assertRedirects(response, reverse('users-manage'))
+        other.refresh_from_db()
+        self.assertFalse(other.is_superuser)
+        self.assertFalse(other.is_staff)
+        self.assertTrue(other.is_supervisor)
+        self.assertEqual(other.area, self.area)
+        self.assertEqual(other.first_name, '')
+        self.assertTrue(other.check_password('Test-pass-9417!'))
+
+    def test_last_active_management_account_cannot_be_demoted(self):
+        other = User.objects.create_superuser(username='inactive-boss', is_active=False)
+        self.client.force_login(self.boss)
+        for pending in [False, True]:
+            if pending:
+                from django.utils import timezone
+                other.is_active = True
+                other.deletion_due_at = timezone.now()
+                other.save()
+            response = self.client.post(reverse('user-edit', args=[self.boss.pk]),
+                                        {'role': 'base', 'area': self.area.pk})
+            self.assertContains(response, 'Debe quedar al menos una cuenta de gerencia activa.')
+            self.boss.refresh_from_db()
+            self.assertTrue(self.boss.is_superuser)
+            self.assertTrue(self.boss.is_staff)
+
+    def test_self_demotion_returns_to_hub_and_removes_management_access(self):
+        User.objects.create_superuser(username='remaining-boss')
+        self.client.force_login(self.boss)
+        response = self.client.post(reverse('user-edit', args=[self.boss.pk]),
+                                    {'role': 'base', 'area': self.area.pk})
+        self.assertRedirects(response, reverse('task-list'))
+        self.boss.refresh_from_db()
+        self.assertFalse(self.boss.is_superuser)
+        self.assertFalse(self.boss.is_staff)
+        self.assertFalse(self.boss.is_supervisor)
+        self.assertEqual(self.client.get(reverse('users-manage')).status_code, 404)
+
+    def test_other_roles_cannot_edit_management(self):
+        for actor in [self.worker, self.supervisor]:
+            self.client.force_login(actor)
+            response = self.client.post(reverse('user-edit', args=[self.boss.pk]),
+                                        {'role': 'base', 'area': self.area.pk})
+            self.assertEqual(response.status_code, 404)
+        self.boss.refresh_from_db()
+        self.assertTrue(self.boss.is_superuser)
 
     def test_custom_404_and_disabled_admin_even_in_debug(self):
         for debug in [True, False]:

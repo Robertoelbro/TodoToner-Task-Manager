@@ -59,6 +59,15 @@ class ManagedUserForm(forms.ModelForm):
     def clean_allow_email_login(self):
         return validate_email_login_permission(self.instance, self.cleaned_data['allow_email_login'])
 
+    def clean_role(self):
+        role = self.cleaned_data['role']
+        if (self.instance.is_superuser and role != 'management'
+                and not User.objects.filter(is_superuser=True, is_active=True,
+                    deleted_at__isnull=True, deletion_due_at__isnull=True)
+                    .exclude(pk=self.instance.pk).exists()):
+            raise forms.ValidationError('Debe quedar al menos una cuenta de gerencia activa.')
+        return role
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.is_superuser = self.cleaned_data['role'] == 'management'
