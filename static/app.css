@@ -17,6 +17,7 @@ body{font-size:13px;line-height:1.45}.topbar{padding:10px 24px;gap:16px}.brand{f
 
 
 .login-centered{display:flex;align-items:center;justify-content:center;min-height:65vh;padding:20px 0}.login-centered>.auth{width:100%;max-width:420px}
+.auth-divider{display:flex;align-items:center;gap:12px;margin:22px 0 14px;color:#4b5563;font-size:14px}.auth-divider::before,.auth-divider::after{content:"";height:1px;flex:1;background:#cbd5ce}.auth button.google-signin{display:flex;align-items:center;justify-content:center;gap:12px;min-height:44px;padding:10px 12px;border:1px solid #747775;border-radius:4px;background:#fff;color:#1f1f1f;font-size:14px;font-weight:500}.auth button.google-signin:hover:not(:disabled){background:#f2f2f2}.auth button.google-signin:disabled{opacity:.65;cursor:not-allowed}.google-signin img{width:20px;height:20px;flex-shrink:0}
 
 /* Ocultar tareas solo en el hub personal. */
 .task-card,.alert-item{position:relative}

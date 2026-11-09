@@ -3,7 +3,7 @@ from django.urls import path
 from accounts.views import register, users_manage, not_found, user_deletion
 from tasks import views
 from accounts import views as account_views
-from accounts.onboarding import AccountAuthenticationForm
+from accounts import google_login
 
 urlpatterns = [
     path('primer-ingreso/', account_views.complete_profile, name='complete-profile'),
@@ -21,7 +21,9 @@ urlpatterns = [
     path('usuarios/', users_manage, name='users-manage'),
     path('usuarios/<int:pk>/', users_manage, name='user-edit'),
     path('usuarios/<int:pk>/acceso-correo/', account_views.email_access, name='user-email-access'),
-    path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html', authentication_form=AccountAuthenticationForm), name='login'),
+    path('login/', google_login.PlatformLoginView.as_view(), name='login'),
+    path('login/google/', google_login.start, name='google-login'),
+    path('login/google/callback/', google_login.callback, name='google-callback'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('registro/', register, name='register'),
     path('', views.task_list, name='task-list'),

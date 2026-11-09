@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %}{% load static %}
 {% block title %}Iniciar sesión · Turno{% endblock %}
 {% block content %}
 <section class="login-centered">
@@ -6,6 +6,19 @@
 <form method="post">{% csrf_token %}{% include 'fields.html' %}
 {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
 <button class="full">Entrar</button></form>
+{% if google_available %}
+<div class="auth-divider"><span>O continúa con</span></div>
+{% if google_configured %}
+<form method="post" action="{% url 'google-login' %}">{% csrf_token %}
+{% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+<button class="google-signin full" type="submit" aria-describedby="google-login-help"><img src="{% static 'brand/google-g.svg' %}" alt="" width="20" height="20">Iniciar sesión con Google</button>
+</form>
+<p class="help" id="google-login-help">Usa el correo de tu cuenta. Gerencia debe habilitar este acceso.</p>
+{% else %}
+<button class="google-signin full" type="button" disabled aria-describedby="google-login-help"><img src="{% static 'brand/google-g.svg' %}" alt="" width="20" height="20">Iniciar sesión con Google</button>
+<p class="help" id="google-login-help">El inicio con Google aún no está disponible. Puedes ingresar con tu usuario y contraseña.</p>
+{% endif %}
+{% endif %}
 <p class="help">Las cuentas son creadas por gerencia. Si olvidaste tus datos o contraseña, contacta a gerencia.</p>
 </div></section>{% endblock %}
 

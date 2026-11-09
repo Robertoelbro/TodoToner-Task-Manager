@@ -49,7 +49,7 @@ class ManagedUserForm(forms.ModelForm):
         model = User
         fields = ('area', 'allow_email_login')
         labels = {'is_supervisor': 'Puede supervisar y reasignar tareas'}
-        help_texts = {'allow_email_login': 'También podrá seguir ingresando con su nombre de usuario.'}
+        help_texts = {'allow_email_login': 'Habilita el correo como usuario y el inicio con Google usando ese correo. También conserva el nombre de usuario.'}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -82,7 +82,7 @@ class EmailAccessForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ('allow_email_login',)
-        help_texts = {'allow_email_login': 'También podrá seguir ingresando con su nombre de usuario.'}
+        help_texts = {'allow_email_login': 'Habilita el correo como usuario y el inicio con Google usando ese correo. También conserva el nombre de usuario.'}
 
     def clean_allow_email_login(self):
         return validate_email_login_permission(self.instance, self.cleaned_data['allow_email_login'])

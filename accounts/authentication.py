@@ -27,3 +27,16 @@ class EmailOrUsernameBackend(ModelBackend):
                 and not user.deletion_due_at and not user.deleted_at):
             return user
         return None
+
+
+class GoogleBackend(ModelBackend):
+    # Solo se establece esta sesión después de verificar el token de Google.
+    def authenticate(self, request, **kwargs):
+        return None
+
+    def get_user(self, user_id):
+        user = super().get_user(user_id)
+        if (user and user.allow_email_login and user.is_active
+                and not user.deletion_due_at and not user.deleted_at):
+            return user
+        return None

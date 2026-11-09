@@ -249,4 +249,10 @@ Gerencia puede habilitar **Permitir ingresar con correo electrónico** desde Usu
 
 Las cuentas existentes comienzan con la opción deshabilitada. Las cuentas desactivadas o pendientes de eliminación siguen bloqueadas y el cambio de contraseña obligatorio se conserva. Los trabajadores no pueden habilitar la opción desde su perfil. No se envían correos ni se reactiva recuperación por correo.
 
-Aplicar `python manage.py migrate` antes del despliegue: incluye `accounts.0009_user_allow_email_login`. El cambio del backend de autenticación requiere volver a iniciar sesión una vez tras actualizar. No agrega dependencias.
+Aplicar `python manage.py migrate` antes del despliegue: incluye `accounts.0009_user_allow_email_login`. El cambio inicial del backend de autenticación requiere volver a iniciar sesión una vez tras actualizar.
+
+## Iniciar sesión con Google
+
+El mismo permiso habilita Google para cuentas existentes con correo coincidente. El botón aparece cuando existe alguna cuenta activa habilitada; solo funciona al configurar el cliente OAuth de Google Cloud. Sin esas credenciales queda deshabilitado y el ingreso habitual continúa disponible. No hay registro automático ni acceso a mensajes de Gmail. Se conserva la vinculación con el identificador estable de Google y se verifica el permiso en cada acceso; revocarlo invalida las sesiones Google. Se mantienen los cambios obligatorios de contraseña y perfil.
+
+Instalar `requirements.txt` y aplicar `accounts.0010_googleidentity` en cada base. La configuración de Google Cloud, variables por ambiente, callbacks y comprobaciones está en [docs/GOOGLE_LOGIN.md](docs/GOOGLE_LOGIN.md).

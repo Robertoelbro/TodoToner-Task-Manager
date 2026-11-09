@@ -57,3 +57,8 @@ class User(AbstractUser):
     def __str__(self):
         return self.display_name
 
+
+class GoogleIdentity(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='google_identity')
+    subject = models.CharField(max_length=255, unique=True)
+

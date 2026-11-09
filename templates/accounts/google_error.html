@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block title %}Inicio con Google · Todotoner{% endblock %}
+{% block content %}<section class="login-centered"><div class="panel auth">
+<h1>No se pudo iniciar sesión</h1><p role="alert">{{ message }}</p>
+<a class="button full" href="{% url 'login' %}">Volver a iniciar sesión</a>
+</div></section>{% endblock %}
